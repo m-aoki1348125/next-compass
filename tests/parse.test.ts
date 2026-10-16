@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { addExtras, arrangeSet, pickFromPool, placeAmong, repick } from '../hooks/arrange'
-import { BLEND_TOP, parseBlend, parseChoices, parseExtras, sharesAt, weightsAt } from '../hooks/compass'
+import { BLEND_TOP, buildBlendPrompt, buildChoicesPrompt, buildExtrasPrompt, buildPoolPrompt, buildSelectPrompt, parseBlend, parseChoices, parseExtras, sharesAt, weightsAt } from '../hooks/compass'
 import { resolveLang } from '../hooks/i18n'
 import type { CompassChoice, CompassSet } from '../types'
 
@@ -256,5 +256,28 @@ describe('a map that does not move under the person', () => {
     expect([profile?.x, profile?.y]).toEqual([before?.x, before?.y])
     expect(next.items.filter(i => !i.isPrimary).map(i => i.text)).toContain('Clean up the export module')
     expect(new Set(next.items.map(i => i.text)).size).toBe(next.items.length)
+  })
+})
+
+describe('one language for every instruction', () => {
+  const ctx = (lang: 'ja' | 'en') => ({ goal: null, transcript: 'user: fix the parser', lang })
+  const text = (blocks: readonly { text: string }[]) => blocks.map(b => b.text).join('\n')
+
+  test('the choices, extras and pool prompts name the language and never say "the language the user writes in"', () => {
+    for (const lang of ['ja', 'en'] as const) {
+      const name = lang === 'ja' ? 'Japanese' : 'English'
+      for (const prompt of [buildChoicesPrompt(ctx(lang)), buildExtrasPrompt({ ...ctx(lang), count: 3 }), buildPoolPrompt({ ...ctx(lang), count: 6 })]) {
+        expect(text(prompt)).toContain(`in ${name}`)
+        expect(text(prompt)).not.toContain('language the user writes in')
+      }
+    }
+  })
+
+  test('the select and blend prompts name the language too', () => {
+    const pool = [{ text: 'a', x: 0, y: 0, isPrimary: false }]
+    expect(text(buildSelectPrompt({ answer: 'done', pool, goal: null, suggestion: null, lang: 'en' }))).toContain('in English')
+    expect(text(buildSelectPrompt({ answer: 'done', pool, goal: null, suggestion: null, lang: 'ja' }))).not.toContain('language of the candidates')
+    const axes = { up: '', right: '', down: '', left: '' }
+    expect(text(buildBlendPrompt({ point: { x: 0, y: 0 }, axes, items: pool, goal: null, lang: 'ja' }))).toContain('in Japanese')
   })
 })

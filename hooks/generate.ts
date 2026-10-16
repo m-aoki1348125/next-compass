@@ -179,10 +179,14 @@ async function timed($: $, rt: Runtime, run: () => Promise<Answered>): Promise<R
 }
 
 /** The context the generator reads; a fork reads the conversation itself, so it gets none. The fast calls always get the summary. */
+/** The language the instructions are written in: the option, or the UI language under `auto`. */
+export const choiceLang = (rt: Runtime): Lang => (rt.settings.choiceLanguage === 'auto' ? rt.lang : rt.settings.choiceLanguage)
+
 async function context($: $, rt: Runtime, isFast = false) {
   return {
     goal: await getGoal($),
     transcript: rt.settings.generator === 'fork' && !isFast ? null : summarizeMessages(await $.session.messages()),
+    lang: choiceLang(rt),
   }
 }
 
@@ -294,7 +298,7 @@ async function generateFromPool($: $, rt: Runtime, ids: Ids, answer: string, pre
   await setPhase($, 'idle', null)
   await bumpStat($, 'offered')
   const poolItems: CompassChoice[] = prepared.map(text => ({ text, x: 0, y: 0, isPrimary: false }))
-  const prompt = buildSelectPrompt({ answer, pool: poolItems, goal, suggestion: suggestionFor(seq) })
+  const prompt = buildSelectPrompt({ answer, pool: poolItems, goal, suggestion: suggestionFor(seq), lang: choiceLang(rt) })
   const reply = await timed($, rt, () => fast($, prompt, 200, SELECT_TIMEOUT_MS))
   const picked = reply.text === null ? null : parseSelect(reply.text, poolItems)
   await relayout($, id, s => {
@@ -395,7 +399,7 @@ export async function pick($: $, rt: Runtime, { point, fill, isOnPreview, previe
   await putPreview($, null)
   await setPhase($, 'blending', null)
   const goal = await getGoal($)
-  const reply = await timed($, rt, () => ask($, rt, buildBlendPrompt({ point, axes: set.axes, items: set.items, goal }), 300, BLEND_TIMEOUT_MS))
+  const reply = await timed($, rt, () => ask($, rt, buildBlendPrompt({ point, axes: set.axes, items: set.items, goal, lang: choiceLang(rt) }), 300, BLEND_TIMEOUT_MS))
   // Stale: a newer pick, a new layout or a new generation has already settled the phase.
   if (seq !== pickSeq || id !== latest) return
   const text = reply.text === null ? null : parseBlend(reply.text)

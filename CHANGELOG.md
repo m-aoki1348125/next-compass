@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 — 2026-10-16
+
+- New option `choiceLanguage` (auto / ja / en): the language every predicted instruction, pick and
+  blend is written in. `auto` follows the UI language. Before, prompts asked for "the language the user
+  writes in", and the four could come back mixed.
+
 ## 0.2.2 — 2026-10-16
 
 - The map's help line said digits send a choice; they put it in the prompt box (the map shows chips, not

@@ -1,7 +1,7 @@
 {
   "name": "next-compass",
   "displayName": "next-compass",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Four predicted next instructions in four directions above the prompt, and a meaning map to send the in-between. English and Japanese.",
   "author": {
     "name": "m-aoki",
@@ -23,6 +23,17 @@
       "type": "string",
       "title": "Language",
       "description": "UI language. auto follows Claude Code's own language setting.",
+      "options": [
+        "auto",
+        "ja",
+        "en"
+      ],
+      "default": "auto"
+    },
+    "choiceLanguage": {
+      "type": "string",
+      "title": "Language of the predictions",
+      "description": "The language the four and the blended instruction are written in. auto follows the UI language, so the choices never mix languages.",
       "options": [
         "auto",
         "ja",

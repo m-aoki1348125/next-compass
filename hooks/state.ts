@@ -112,6 +112,8 @@ export type Settings = {
   showMap: boolean
   extraCount: number
   language: Lang | 'auto'
+  /** The language the predicted instructions are written in; `auto` follows the UI language. */
+  choiceLanguage: Lang | 'auto'
 }
 
 const GENERATORS: readonly Generator[] = ['haiku', 'sonnet', 'opus', 'fork']
@@ -122,4 +124,5 @@ export const readSettings = (options: PluginOptions): Settings => ({
   showMap: options.showMap !== false,
   extraCount: clampExtra(typeof options.extraCount === 'number' ? options.extraCount : 8),
   language: options.language === 'ja' || options.language === 'en' ? options.language : 'auto',
+  choiceLanguage: options.choiceLanguage === 'ja' || options.choiceLanguage === 'en' ? options.choiceLanguage : 'auto',
 })
