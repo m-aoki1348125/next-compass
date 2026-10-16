@@ -221,7 +221,7 @@ describe('language', () => {
   test('with no language setting, auto is English', async ($, on) => {
     stand(on)
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true } as never)
-    expect((await compass($, 'foo')).text).toContain('"foo" is not a verb')
+    expect((await compass($, 'foo')).text).toContain('Unknown command "foo"')
   })
 
   test('the option wins over the setting', { options: { language: 'en' } }, async ($, on) => {

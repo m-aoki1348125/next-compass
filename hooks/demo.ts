@@ -20,7 +20,7 @@ const ANCHORS: readonly Point[] = [
 
 const AXES: Record<Lang, CompassAxes> = {
   ja: { up: '仕上げる', right: '広げる', down: '確かめる', left: '固める' },
-  en: { up: 'ship it', right: 'widen', down: 'check', left: 'harden' },
+  en: { up: 'finish', right: 'widen', down: 'check', left: 'harden' },
 }
 
 /** Where the eight candidates sit, the same in both languages. */
@@ -115,7 +115,7 @@ export const demoBlendText = (point: Point, items: readonly CompassChoice[], lan
   const share = (w: number) => Math.round((w / (a.weight + b.weight)) * 100)
   return lang === 'ja'
     ? `「${first.text}」${share(a.weight)}% と「${second.text}」${share(b.weight)}% の間をとって進めて`
-    : `Go between "${first.text}" (${share(a.weight)}%) and "${second.text}" (${share(b.weight)}%)`
+    : `Take a middle road: "${first.text}" (${share(a.weight)}%) and "${second.text}" (${share(b.weight)}%)`
 }
 
 /** The whole script, in time order. */
@@ -137,7 +137,7 @@ export const demoFrames = (lang: Lang = 'ja'): DemoFrame[] => {
       toast:
         lang === 'ja'
           ? `デモ：この位置なら ${demoBlendText(GLIDE_TO, settled.items, lang)} を送信します`
-          : `Demo: this spot would send ${demoBlendText(GLIDE_TO, settled.items, lang)}`,
+          : `Demo: this spot would send: ${demoBlendText(GLIDE_TO, settled.items, lang)}`,
     },
     { at: 16000, ghost: null },
   ]

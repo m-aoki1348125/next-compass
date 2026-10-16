@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2 — 2026-10-16
+
+- The map's help line said digits send a choice; they put it in the prompt box (the map shows chips, not
+  text). Fixed in both languages. English wording of the demo and three messages tightened.
+
 ## 0.2.1 — 2026-10-16
 
 - The demo plays in the UI language: an English script beside the Japanese one.

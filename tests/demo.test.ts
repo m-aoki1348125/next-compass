@@ -2,6 +2,8 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On, RenderElement, RenderNode, RenderPropsOf } from 'claude-code'
 
+import { compass, stand } from './state-helpers'
+
 const DEMO = {
   command: 'compass',
   args: 'demo',
@@ -165,5 +167,16 @@ describe('demo mode', () => {
     expect(await band.find({ text: 'engine' })).toBeDefined()
     expect(await band.find({ text: /デモ/ })).toBe(undefined)
     expect(engine.submitted).toEqual([])
+  })
+
+  test('in English the demo plays with the English script', { options: { language: 'en' }, timeoutMs: 20_000 }, async ($, on) => {
+    const engine = stand(on)
+    await compass($, 'demo')
+    await engine.clock.advance(13_000)
+    expect(engine.toasts.some(t => t.startsWith('Demo: this spot would send: Take a middle road'))).toBe(true)
+    expect(engine.toasts.some(t => /[ぁ-んァ-ン一-龥]/.test(t))).toBe(false)
+    const four = engine.four() ?? []
+    expect(four).toHaveLength(4)
+    expect(four.every(t => !/[ぁ-んァ-ン一-龥]/.test(t))).toBe(true)
   })
 })
