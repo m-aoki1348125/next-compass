@@ -1,7 +1,7 @@
 import type { Register, Timer } from 'claude-code'
 
 import type { CompassPhase, CompassTimings } from '../types'
-import { PALETTE, PRIMARY_COUNT } from './compass'
+import { PRIMARY_COUNT } from './compass'
 import { demoFrames } from './demo'
 import type { DemoFrame } from './demo'
 import { cutToCells } from './field'
@@ -332,10 +332,8 @@ export const register: Register = (on, options) => {
       const cut = cutToCells(text, Math.max(4, room))
       const isCut = cut !== text
       return (
+        // The hotkey draws the number (`1: `, or the desktop's own button): the label is the text alone.
         <Button plain key={`pick:${i}`} hotkey={String(i + 1)} onPress={() => void choose($, rt, i, isCut, text)}>
-          <Text color={PALETTE[i]} bold>
-            {i + 1}{' '}
-          </Text>
           {cut}
         </Button>
       )
@@ -360,7 +358,7 @@ export const register: Register = (on, options) => {
         {header}
         {Array.from({ length: PRIMARY_COUNT }, (_, i) => (
           <Box key={`row:${i}`} flexDirection="row">
-            {pickButton(i, width - 10)}
+            {pickButton(i, width - 8)}
             <Text> </Text>
             {edit(i)}
           </Box>

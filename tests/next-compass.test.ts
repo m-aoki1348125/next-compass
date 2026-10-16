@@ -159,6 +159,8 @@ describe('band', () => {
     await ui.press({ key: 'pick:1' })
     expect(submitted).toHaveLength(1)
     expect(shown).toContain(submitted[0] ?? '-')
+    // The hotkey draws the number: the label is the text alone, not "2 " before it.
+    expect(shown).toBe(submitted[0])
     expect(await ui.find({ text: 'engine' })).toBeDefined()
   })
 
