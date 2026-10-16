@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1 — 2026-10-16
 
 - README: screenshots of the terminal (the four above the prompt with the docked map, the moving field while
   Claude works, a spot between candidates with its instruction), taken in the English UI.
