@@ -3,7 +3,7 @@ import type { ClientModule, ClientSurface, RenderElement } from 'claude-code'
 import type { CompassChoice } from '../types'
 import { blend, cutToCells, fitRows, fluxCell, mapCell } from './field'
 import type { Cell as FieldCell, Run } from './field'
-import { lightsOf, lit, rainbow } from './flux'
+import { lightsOf, lit, nearLights, rainbow } from './flux'
 import { MOVES, caption, center, cursorOf, placeItems, paint, sameCell, toCell, toPoint } from './map'
 import type { Cell, Grid, MapState } from './map'
 
@@ -52,9 +52,10 @@ type SpaceState = {
   lastLabels: string[]
 }
 
-const TICK_MS = 120
+/** Six frames a second: enough for a field that drifts, and half the drawing of eight. */
+const TICK_MS = 160
 /** Ticks the melt between the free field and the map takes. */
-const MELT_TICKS = 9
+const MELT_TICKS = 7
 const WORK_SPEED = 0.08
 /** A settled map is still: its colors mean positions, which do not move. */
 const MAP_SPEED = 0
@@ -223,6 +224,7 @@ const drawGrid = ({ props, view, melt, columns, rows, hasItems }: Scene): Run[][
   const placed = hasItems && melt > 0 ? shownAt(placeItems({ ...props }, columns, rows), melt) : {}
   const targets = props.items.filter(i => i.isPrimary).map(i => toCell(i.x, i.y, columns, rows))
   const lights = melt < 1 ? lightsOf(props.gems, view.t, view.frame, columns, rows, { targets, pull: melt }) : []
+  const near = nearLights(lights, columns, rows)
   const ghost = props.ghost === null ? null : toCell(props.ghost.x, props.ghost.y, columns, rows)
   const previewAt = props.preview === null ? null : toCell(props.preview.x, props.preview.y, columns, rows)
   // A cursor moved away from the preview is the pointer again; the preview's spot keeps its mark otherwise.
@@ -232,18 +234,24 @@ const drawGrid = ({ props, view, melt, columns, rows, hasItems }: Scene): Run[][
     hover: ghost === null && melt >= CHIPS_AT ? view.hover : null,
     frame: view.frame,
   }
-  return Array.from({ length: rows }, (_, row) =>
-    Array.from({ length: columns }, (_, col): Run => {
+  return Array.from({ length: rows }, (_, row) => {
+    // A terminal cell is about twice as tall as wide: the ground is computed once per pair of columns and shared.
+    let pair: Run | null = null
+    return Array.from({ length: columns }, (_, col): Run => {
       const cell = { col, row }
       const p = toPoint(cell, columns, rows)
-      const ground = { ...groundAt(p.x, p.y, view.t, props.items, melt), bold: false }
+      if (col % 2 === 0 || pair === null) pair = { ...groundAt(p.x, p.y, view.t, props.items, melt), bold: false }
+      const ground = pair
       const isMarked =
         placed[`${col},${row}`] !== undefined || sameCell(pointer.cursor, cell) || sameCell(pointer.hover, cell)
-      if (!isMarked) return lights.length > 0 ? lit(col, row, ground, lights) : ground
+      if (!isMarked) {
+        const mine = near.get(`${col},${row}`)
+        return mine === undefined ? ground : lit(col, row, ground, mine)
+      }
       const g = paint(cell, ground, placed, pointer)
       return { text: g.char, color: g.color, bg: g.bg, bold: g.bold === true }
-    }).filter(r => r.text !== ''),
-  )
+    }).filter(r => r.text !== '')
+  })
 }
 
 /** A short signature of the items, to notice when the map's content changed. */

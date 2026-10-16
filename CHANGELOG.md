@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-10-16
+
+- The demo plays in the UI language: an English script beside the Japanese one.
+- Less CPU while Claude works: the field is computed once per pair of columns (a cell is twice as tall as
+  wide), gem trails are shorter, each cell looks only at the lights within its reach, colors are rounded
+  once per frame, runs are built in place, and the field draws six frames a second instead of eight. One
+  frame of a 200×46 pane went from about 93 ms to about 50 ms of script time, at two thirds the rate.
+
 ## 0.2.0 — 2026-10-16
 
 The product release: the same four-direction band and meaning map, rebuilt for accuracy, speed and a

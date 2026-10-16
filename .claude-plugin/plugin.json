@@ -1,7 +1,7 @@
 {
   "name": "next-compass",
   "displayName": "next-compass",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Four predicted next instructions in four directions above the prompt, and a meaning map to send the in-between. English and Japanese.",
   "author": {
     "name": "m-aoki",

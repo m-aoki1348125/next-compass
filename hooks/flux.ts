@@ -9,7 +9,7 @@ import type { Run } from './field'
  */
 
 const HALO = 2.6
-const TRAIL = 4
+const TRAIL = 3
 
 /** The facets a gem turns through as it drifts, so it seems to catch the light. */
 const FACETS = ['✦', '✧', '✦', '❖'] as const
@@ -56,7 +56,26 @@ export const lightsOf = (
     })
   })
 
-/** One cell: the field, brightened toward each light near it; a gem or a trail point on top. */
+/** The lights within reach of each cell, keyed "col,row": built once a frame, so a cell looks only at its own few. */
+export const nearLights = (lights: readonly Light[], columns: number, rows: number): Map<string, Light[]> => {
+  const near = new Map<string, Light[]>()
+  for (const l of lights) {
+    const c0 = Math.max(0, Math.floor(l.col - HALO * 2 - 1))
+    const c1 = Math.min(columns - 1, Math.ceil(l.col + HALO * 2 + 1))
+    const r0 = Math.max(0, Math.floor(l.row - HALO - 1))
+    const r1 = Math.min(rows - 1, Math.ceil(l.row + HALO + 1))
+    for (let row = r0; row <= r1; row++) {
+      for (let col = c0; col <= c1; col++) {
+        if (Math.hypot((l.col - col) * 0.5, l.row - row) >= HALO) continue
+        const key = `${col},${row}`
+        near.set(key, [...(near.get(key) ?? []), l])
+      }
+    }
+  }
+  return near
+}
+
+/** One cell: the field, brightened toward each light near it; a gem or a trail point on top. `lights` are the ones within reach of this cell. */
 export const lit = (col: number, row: number, base: Run, lights: readonly Light[]): Run => {
   const near = lights
     .map(l => ({ l, d: Math.hypot((l.col - col) * 0.5, l.row - row) }))

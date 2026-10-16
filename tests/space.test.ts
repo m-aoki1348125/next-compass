@@ -8,7 +8,7 @@ import type { On, RenderElement, RenderNode, RenderPropsOf } from 'claude-code'
  */
 
 const SPACE = 'space@2'
-const TICK_MS = 120
+const TICK_MS = 160
 const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
 
 const CHOICES = [

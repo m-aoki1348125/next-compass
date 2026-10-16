@@ -96,20 +96,29 @@ export type Run = { text: string; color: string; bg: string; bold: boolean }
 const RUN_COST = 90
 const TREE_BUDGET = 70_000
 
-/** A hex color rounded to `step` per channel, so near colors become one. */
-const coarse = (color: string, step: number): string => {
+/** A hex color rounded to `step` per channel, so near colors become one. The field repeats its colors, so each is rounded once a frame. */
+const coarse = (color: string, step: number, memo: Map<string, string>): string => {
+  const hit = memo.get(color)
+  if (hit !== undefined) return hit
   const n = parseInt(color.slice(1), 16)
-  return hex([16, 8, 0].map(s => Math.round(((n >> s) & 255) / step) * step))
+  const out = hex([16, 8, 0].map(s => Math.round(((n >> s) & 255) / step) * step))
+  memo.set(color, out)
+  return out
 }
 
-const toRuns = (cells: readonly Run[]): Run[] =>
-  cells.reduce<Run[]>((runs, c) => {
+/** Neighbors sharing colors merged into one run. Builds its own list in place: copying it per cell made a row quadratic. */
+const toRuns = (cells: readonly Run[]): Run[] => {
+  const runs: Run[] = []
+  for (const c of cells) {
     const last = runs[runs.length - 1]
     if (last !== undefined && last.color === c.color && last.bg === c.bg && last.bold === c.bold) {
-      return [...runs.slice(0, -1), { ...last, text: last.text + c.text }]
+      runs[runs.length - 1] = { ...last, text: last.text + c.text }
+    } else {
+      runs.push({ ...c })
     }
-    return [...runs, c]
-  }, [])
+  }
+  return runs
+}
 
 /** A one-character run joins the run before it, taking its colors. */
 const absorb = (runs: readonly Run[]): Run[] =>
@@ -128,6 +137,9 @@ const ROUGHEST = 64
 const STEPS = [10, 20, 32, 48, ROUGHEST] as const
 /** The index into STEPS that fit last time; the first try next time. */
 let lastStep = 0
+let calls = 0
+/** How often a finer step than the last fit is tried again. */
+const FINER_EVERY = 25
 
 /**
  * Turns rows of cells into rows of runs that fit a Client's tree: colors
@@ -135,18 +147,23 @@ let lastStep = 0
  * resort lone cells join their left neighbor. A big pane stays drawn.
  */
 export const fitRows = (rows: readonly (readonly Run[])[], budget = TREE_BUDGET): Run[][] => {
-  const attempt = (step: number) =>
-    rows.map(cells => toRuns(cells.map(c => ({ ...c, color: coarse(c.color, step), bg: coarse(c.bg, step) }))))
-  // The step that fit last frame is tried first, then one finer: two attempts a frame, not five.
+  const attempt = (step: number) => {
+    const memo = new Map<string, string>()
+    return rows.map(cells => toRuns(cells.map(c => ({ ...c, color: coarse(c.color, step, memo), bg: coarse(c.bg, step, memo) }))))
+  }
+  // The step that fit last frame is tried first: one attempt a frame. Now and then a finer step is tried, to win detail back.
+  calls += 1
   const order = [lastStep, ...STEPS.map((_, i) => i).filter(i => i !== lastStep)].filter(i => STEPS[i] !== undefined)
   for (const i of order) {
     const step = STEPS[i]
     if (step === undefined) continue
     const fitted = attempt(step)
     if (costOf(fitted) <= budget) {
-      const finer = i > 0 && i === lastStep ? attempt(STEPS[i - 1] ?? step) : null
-      lastStep = finer !== null && costOf(finer) <= budget ? i - 1 : i
-      return finer !== null && costOf(finer) <= budget ? finer : fitted
+      const tryFiner = i > 0 && i === lastStep && calls % FINER_EVERY === 0
+      const finer = tryFiner ? attempt(STEPS[i - 1] ?? step) : null
+      const isFinerOk = finer !== null && costOf(finer) <= budget
+      lastStep = isFinerOk ? i - 1 : i
+      return isFinerOk ? finer : fitted
     }
   }
   const roughest = attempt(ROUGHEST)

@@ -20,7 +20,7 @@ import {
 } from './compass'
 import type { Block, Point } from './compass'
 import { demoBlendText } from './demo'
-import type { Translate } from './i18n'
+import type { Lang, Translate } from './i18n'
 import { clearChoices, getDemo, getGoal, getPhase, getPreview, getSet, patchSet, putPreview, putSet, setPhase } from './state'
 import type { $, Settings } from './state'
 
@@ -32,7 +32,7 @@ import type { $, Settings } from './state'
  * after a newer generation, turn or pick changes nothing.
  */
 
-export type Runtime = { settings: Settings; t: Translate }
+export type Runtime = { settings: Settings; t: Translate; lang: Lang }
 
 /** Preparing and picking always go to the fastest model, whatever writes the rest. */
 const FAST_MODEL = 'haiku'
@@ -385,7 +385,7 @@ export type PickSpot = { point: Point; fill: boolean; isOnPreview: boolean; prev
 export async function pick($: $, rt: Runtime, { point, fill, isOnPreview, previewText }: PickSpot): Promise<void> {
   const set = await getSet($)
   if (set === null) return
-  if (await getDemo($)) return $.ui.toast(rt.t('demoNoSend', { text: demoBlendText(point, set.items) }))
+  if (await getDemo($)) return $.ui.toast(rt.t('demoNoSend', { text: demoBlendText(point, set.items, rt.lang) }))
   const preview = await getPreview($)
   // The second pick sends the preview the Client showed: by cell when the Client said so (and its text matches), by distance otherwise.
   const isSameText = previewText === null || previewText === preview?.text

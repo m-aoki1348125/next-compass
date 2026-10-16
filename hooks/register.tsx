@@ -97,14 +97,14 @@ async function stopDemo($: $): Promise<number> {
   return run
 }
 
-async function playDemo($: $): Promise<void> {
+async function playDemo($: $, rt: Runtime): Promise<void> {
   const run = await stopDemo($)
   await resetTurn($)
   await putDemo($, true)
   await openMap($)
   // A prompt that arrived while starting has stopped this run: leave nothing of it behind.
   if (run !== demoRun) return void (await putDemo($, false))
-  demoTimers = demoFrames().map(frame => $.clock.after(frame.at, () => void applyFrame($, run, frame)))
+  demoTimers = demoFrames(rt.lang).map(frame => $.clock.after(frame.at, () => void applyFrame($, run, frame)))
 }
 
 async function applyFrame($: $, run: number, frame: DemoFrame): Promise<void> {
@@ -135,12 +135,13 @@ async function refresh($: $, rt: Runtime): Promise<void> {
 
 export const register: Register = (on, options) => {
   const settings = readSettings(options)
-  const rt: Runtime = { settings, t: makeT(resolveLang(settings.language, undefined)) }
+  const rt: Runtime = { settings, t: makeT(resolveLang(settings.language, undefined)), lang: resolveLang(settings.language, undefined) }
 
   on('session.start', async ($, e, next) => {
     // A load (a reload after a fix included) gives the space a fresh start, and no work of the old module is still running.
     const claude = (await $.settings.read().catch(() => ({}))) as { language?: unknown }
-    rt.t = makeT(resolveLang(settings.language, claude.language))
+    rt.lang = resolveLang(settings.language, claude.language)
+    rt.t = makeT(rt.lang)
     paneTitle = rt.t('paneTitle')
     await putFaults($, () => 0)
     await setPhase($, 'idle', null)
@@ -177,7 +178,7 @@ export const register: Register = (on, options) => {
         await putGoal($, (arg.length > 0 ? arg.slice(0, 500) : null))
         return { text: arg.length > 0 ? t('goalSet', { goal: arg }) : t('goalCleared') }
       case 'demo':
-        await playDemo($)
+        await playDemo($, rt)
         return { text: t('demoStarted') }
       case 'refresh':
         await refresh($, rt)
