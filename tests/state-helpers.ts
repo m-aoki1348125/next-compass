@@ -171,7 +171,7 @@ export const endTurn = ($: Engine, turnId = 't1', reason: 'answer' | 'aborted' |
     ...(agentId === undefined ? {} : { agentId }),
   })
 
-const BAND: RenderPropsOf['AbovePrompt'] = {
+export const BAND: RenderPropsOf['AbovePrompt'] = {
   hasSurvey: false,
   isWorking: false,
   maxRows: 12,

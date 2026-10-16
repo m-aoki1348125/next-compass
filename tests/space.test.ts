@@ -339,5 +339,8 @@ describe('a region laid out to its content (the desktop)', () => {
     const rows = ('children' in root ? (root.children ?? []) : []).map(textOf)
     expect(rows.length).toBe(PANE_PROPS.scroll.bodyRows - 2)
     expect(hasChips(rows.slice(0, -2).join('\n'))).toBe(true)
+    // The grid and the last caption row in the desktop's monospaced face, so the rows line up and fill the pane.
+    const nodes = 'children' in root ? (root.children ?? []) : []
+    for (const node of [...nodes.slice(0, -2), ...nodes.slice(-1)]) expect(JSON.stringify(node)).toContain('"mono":true')
   })
 })

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { SPACE, compass, endTurn, mountBand, mountPane, pickAt, preparedTurn, stand, startTurn } from './state-helpers'
+import { BAND, SPACE, compass, endTurn, mountBand, mountPane, pickAt, preparedTurn, stand, startTurn } from './state-helpers'
 
 /**
  * The map's edges (extras, the two-step pick through a preview), the set's
@@ -336,5 +336,51 @@ describe('what the map sends is what was read', () => {
     await pane.post({ kind: 'choose', index: 0, fill: false }, { in: SPACE })
     expect(engine.submitted).toEqual([])
     expect(engine.filled).toHaveLength(1)
+  })
+})
+
+describe('a digit sent as the prompt (the desktop sends a bare digit as text)', () => {
+  const typed = (text: string) => ({ text, origin: { kind: 'composer' as const }, wait: false })
+
+  test('becomes that choice and counts as taken from the four, not as typed', async ($, on) => {
+    const engine = stand(on)
+    await compass($, 'refresh')
+    await (await mountBand($)).redraw()
+    const four = engine.four() ?? []
+    await $.prompt.submit(typed('2'))
+    await engine.clock.settle()
+    expect(engine.submitted).toEqual([four[1]])
+    expect(engine.four()).toBe(null)
+    const result = await compass($, 'stats')
+    expect(result.text).toContain('1 sent from the four')
+    expect(result.text).toContain('0 typed instead')
+  })
+
+  test('a choice the band had to cut goes to the prompt box, and the digit is not sent', async ($, on) => {
+    const engine = stand(on)
+    await compass($, 'refresh')
+    const band = await $.ui.mount({ plugin: 'next-compass', surface: 'desktop', component: 'AbovePrompt', props: { ...BAND, bodyColumns: 20 } })
+    await band.redraw()
+    const four = engine.four() ?? []
+    expect((await band.find({ key: 'pick:0' }))?.text).not.toBe(four[0])
+    const result = await $.prompt.submit(typed('1'))
+    await engine.clock.settle()
+    expect(result).toHaveProperty('drop', 'The picked choice is in the prompt box: check it, then send.')
+    expect(engine.filled).toEqual([four[0]])
+    expect(engine.submitted).toEqual([])
+  })
+
+  test('during the demo a digit sends nothing and says why', { timeoutMs: 20_000 }, async ($, on) => {
+    const engine = stand(on)
+    await compass($, 'demo')
+    await engine.clock.advance(13_000)
+    const band = await mountBand($)
+    await band.redraw()
+    expect(await band.find({ type: 'Button', key: 'pick:0' })).toBeDefined()
+    const result = await $.prompt.submit(typed('1'))
+    await engine.clock.settle()
+    expect(result).toHaveProperty('drop')
+    expect(String((result as { drop?: unknown }).drop)).toMatch(/^Demo: not sending/)
+    expect(engine.submitted).toEqual([])
   })
 })
