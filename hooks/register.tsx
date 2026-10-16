@@ -1,7 +1,7 @@
 import type { Register, Timer } from 'claude-code'
 
 import type { CompassPhase, CompassTimings } from '../types'
-import { ARROWS, PALETTE, PRIMARY_COUNT } from './compass'
+import { PALETTE, PRIMARY_COUNT } from './compass'
 import { demoFrames } from './demo'
 import type { DemoFrame } from './demo'
 import { cutToCells } from './field'
@@ -326,7 +326,7 @@ export const register: Register = (on, options) => {
       return (
         <Button plain key={`pick:${i}`} hotkey={String(i + 1)} onPress={() => void choose($, rt, i, isCut, text)}>
           <Text color={PALETTE[i]} bold>
-            {ARROWS[i]}{' '}
+            {i + 1}{' '}
           </Text>
           {cut}
         </Button>

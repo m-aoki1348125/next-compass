@@ -11,10 +11,10 @@ The idea: keep choosing, and the project moves the way you meant.
 
 ```
 ✦ Next step   Empty prompt: 1-4 sends · ✎ fills to edit · … fills, not sends · /compass: map
-↑ Finish the export and open a PR                                     ✎
-→ Add JSON output next to CSV                                         ✎
-↓ Open the exported file and check it by hand                         ✎
-← Add tests for the export module                                     ✎
+1 Finish the export and open a PR                                     ✎
+2 Add JSON output next to CSV                                         ✎
+3 Open the exported file and check it by hand                         ✎
+4 Add tests for the export module                                     ✎
 ```
 
 ## How it works

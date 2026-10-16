@@ -11,6 +11,8 @@
   lighter tint, written over the field with no colored box; the pointer is a white `✛` on a soft glow of
   the ground instead of a white block, the mouse a `✧`. At rest the map carries no pointer and no
   caption: the pointer appears where the keys or the mouse first put it (the keys start from the middle).
+- The band numbers its choices (`1 …`, in the choice's color) instead of pointing with `↑ → ↓ ←`: the
+  number is the key that sends it.
 - Option `keyMode` and the arrow-key cross are removed: the arrow keys belong to Claude Code's own history
   and focus movement, and a focused band's ring moves in drawing order, not by direction. Digits and
   clicks pick a choice.

@@ -13,8 +13,6 @@ export const MAX_EXTRA = 16
 const MAX_TEXT = 120
 const MAX_AXIS = 16
 
-/** Arrow glyph per primary choice: 1 up, 2 right, 3 down, 4 left. */
-export const ARROWS = ['↑', '→', '↓', '←'] as const
 
 /** One color per primary choice: amber, rose, teal, indigo. */
 export const PALETTE = ['#f2a93b', '#ef5d8a', '#3cc6b4', '#7b8cff'] as const
