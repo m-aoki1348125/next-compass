@@ -6,6 +6,8 @@
   spot between them blended), the stats line reads as a sentence (`2 offered · 1 sent from the four …`),
   "running commands" and "other tools" are back in the working label. The Japanese map help and the
   resting line follow the same pick rule.
+- Help lines that would be cut by the edge take a short form instead: the band hint when the band is
+  narrow, the map help and the preview help when the pane is (both languages).
 
 ## 0.3.2 — 2026-10-16
 

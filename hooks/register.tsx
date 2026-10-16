@@ -21,7 +21,7 @@ import {
 } from './generate'
 import type { Runtime } from './generate'
 import { makeT, resolveLang } from './i18n'
-import type { Translate } from './i18n'
+import type { StringKey, Translate } from './i18n'
 import {
   getActivity,
   getDemo,
@@ -95,6 +95,12 @@ const kindsLine = (t: Translate, tools: readonly string[]): string => {
 }
 
 const NO_TIMINGS: CompassTimings = { contextMs: 0, choicesMs: null, extrasMs: null, layoutMs: null, bandMs: null, mapMs: null, isPrefetched: false }
+
+/** The long text when it fits the cells given, else the short one: a help line is cut by the edge otherwise. */
+const fitting = (t: Translate, long: StringKey, short: StringKey, cells: number): string => {
+  const text = t(long)
+  return cutToCells(text, Math.max(1, cells)) === text ? text : t(short)
+}
 
 /** Bumped by every demo start and every prompt, so a demo's later frames stop once it is over. */
 let demoRun = 0
@@ -337,13 +343,15 @@ export const register: Register = (on, options) => {
     const edit = (i: number) => (
       <Button plain dimColor key={`edit:${i}`} label="✎" onPress={() => void choose($, rt, i, true, set.items[i]?.text)} />
     )
+    // The cells the title (and the refining note) take before the hint, which then gets the rest or its short form.
+    const headCells = Array.from(`${t('bandTitle')}${isDemo ? t('demoTag') : ''} ${set.isRefining === true ? t('refining') : ''}`).length
     const header = (
       <Box flexDirection="row">
         <Text color="claude" bold>
           {t('bandTitle')}{isDemo ? t('demoTag') : ''}{' '}
         </Text>
         {set.isRefining === true && <Text color="claude">{t('refining')}</Text>}
-        <Text dimColor>{t('hintNumber')}</Text>
+        <Text dimColor>{fitting(t, 'hintNumber', 'hintNumberShort', width - headCells)}</Text>
       </Box>
     )
 
@@ -398,7 +406,15 @@ export const register: Register = (on, options) => {
               prefetched: tm.isPrefetched ? t('statusPrefetched') : '',
               map: set.isMapPending ? t('statusMapPending') : seconds(rt, tm.mapMs),
             })
-    const help = set === null ? ' ' : phase === 'blending' ? t('helpBlending') : preview !== null ? t('helpPreview') : t('helpMap')
+    const paneCells = Math.max(20, e.props.bodyColumns)
+    const help =
+      set === null
+        ? ' '
+        : phase === 'blending'
+          ? t('helpBlending')
+          : preview !== null
+            ? fitting(t, 'helpPreview', 'helpPreviewShort', paneCells)
+            : fitting(t, 'helpMap', 'helpMapShort', paneCells)
     const faults = await getFaults($)
     if (faults >= MAX_FAULTS) {
       return (

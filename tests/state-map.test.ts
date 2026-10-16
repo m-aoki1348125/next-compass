@@ -82,6 +82,17 @@ describe('map edges', () => {
     expect(engine.four()).toHaveLength(4)
   })
 
+  test('the map help fits the pane: the long form where it has room, the short form where it has not', async ($, on) => {
+    stand(on)
+    await compass($, 'refresh')
+    const narrow = await mountPane($)
+    expect(await narrow.find({ text: /A candidate as is, between them blended · again sends · Shift fills/ })).toBeDefined()
+    expect(await narrow.find({ text: /1-4 fills a choice/ })).toBe(undefined)
+    await narrow.unmount()
+    const wide = await mountPane($, 140)
+    expect(await wide.find({ text: /1-4 fills a choice/ })).toBeDefined()
+  })
+
   test('a pick on a candidate itself previews its own words, with no blend call; the second pick sends them', async ($, on) => {
     const engine = stand(on)
     await compass($, 'refresh')

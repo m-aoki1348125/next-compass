@@ -183,7 +183,8 @@ const BAND: RenderPropsOf['AbovePrompt'] = {
 export const mountBand = ($: Engine) =>
   $.ui.mount({ plugin: 'next-compass', surface: 'terminal', component: 'AbovePrompt', props: BAND })
 
-export const mountPane = ($: Engine) =>
+/** The map pane as the surface mounts it; `bodyColumns` is the width its help line must fit. */
+export const mountPane = ($: Engine, bodyColumns = 60) =>
   $.ui.mount({
     plugin: 'next-compass',
     surface: 'terminal',
@@ -192,7 +193,7 @@ export const mountPane = ($: Engine) =>
     props: {
       title: '意味空間マップ',
       isFocused: false,
-      bodyColumns: 60,
+      bodyColumns,
       placement: 'dock',
       scroll: { bodyRows: 30, offset: 0 },
       view: {},
