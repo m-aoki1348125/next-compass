@@ -29,9 +29,10 @@ The idea: keep choosing, and the project moves the way you meant.
    character n-grams and words (TF-IDF cosine), placed by classical MDS, and aligned to the previous
    turn's layout so the map does not spin. Same candidates, same map, every time. The four take the
    directions (up / right / down / left) their spots point to; the model only names them.
-4. **Picking a spot** between candidates writes one instruction blending the nearest three in the
-   shares the caption shows. The first pick shows it under the map; a second pick at the same spot
-   sends it. Shift fills the prompt box instead.
+4. **Picking a candidate** (its gem, number or name) shows that candidate's own words, as written.
+   **Picking a spot** between candidates writes one instruction blending the nearest three in the
+   shares the caption shows. Either way the first pick shows the text under the map; a second pick at
+   the same spot sends it. Shift fills the prompt box instead.
 
 What is sent is always what you read: a choice the band had to cut short with `…` goes to the prompt
 box instead of being sent.
@@ -54,7 +55,7 @@ Before installing any mod you can list what it does without running it:
 |---|---|
 | `1`–`4` in the empty prompt box, or click a choice | Sends that instruction as yours |
 | `✎` next to a choice | Puts it in the prompt box to edit |
-| Map: click, or arrow keys + Enter | Writes the instruction for that spot and shows it under the map |
+| Map: click, or arrow keys + Enter | On a candidate: shows its own words. Between candidates: writes the instruction for that spot. Shown under the map |
 | Map: click / Enter again at the same spot | Sends it (Shift: fills the prompt box) |
 | Map: `1`–`4` | Puts that choice in the prompt box (the map shows chips, not the full text) |
 | `/compass goal <text>` | Sets the goal the four lean toward; `/compass goal` clears it |

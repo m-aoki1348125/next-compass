@@ -288,6 +288,7 @@ export const register: Register = (on, options) => {
         isOnPreview: data.isOnPreview === true,
         previewText: typeof data.previewText === 'string' ? data.previewText : null,
         onItem: typeof data.onItem === 'number' ? Math.trunc(data.onItem) : null,
+        onText: typeof data.onText === 'string' ? data.onText : null,
       })
     }
     return next(e)

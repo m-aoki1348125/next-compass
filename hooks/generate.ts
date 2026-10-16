@@ -382,16 +382,25 @@ const near = (a: Point, b: Point): boolean => Math.hypot(a.x - b.x, a.y - b.y) <
  * A pick on the map: the first at a spot writes the instruction for it and
  * shows it under the map; a second pick at the same spot sends it (Shift, or
  * a preview the caption could not show whole, fills the prompt box instead).
- * A pick elsewhere writes anew. `onItem`: the candidate drawn at the picked
- * cell (the Client says), whose text is then the instruction as written, no
- * blend; a spot off every candidate is blended from its position.
+ * A pick elsewhere writes anew. `onItem` / `onText`: the candidate drawn at
+ * the picked cell (the Client says, index and text), whose text is then the
+ * instruction as written, no blend; a spot off every candidate is blended
+ * from its position.
  */
-export type PickSpot = { point: Point; fill: boolean; isOnPreview: boolean; previewText: string | null; onItem: number | null }
+export type PickSpot = { point: Point; fill: boolean; isOnPreview: boolean; previewText: string | null; onItem: number | null; onText: string | null }
 
-export async function pick($: $, rt: Runtime, { point, fill, isOnPreview, previewText, onItem }: PickSpot): Promise<void> {
+/** The candidate a pick landed on, by the text the Client drew there (the index alone could point at a relaid list). */
+const candidateOf = (items: readonly CompassChoice[], onItem: number | null, onText: string | null): CompassChoice | undefined => {
+  if (onItem === null) return undefined
+  const byIndex = items[onItem]
+  if (onText === null || byIndex?.text === onText) return byIndex
+  return items.find(i => i.text === onText)
+}
+
+export async function pick($: $, rt: Runtime, { point, fill, isOnPreview, previewText, onItem, onText }: PickSpot): Promise<void> {
   const set = await getSet($)
   if (set === null) return
-  const exact = onItem === null ? undefined : set.items[onItem]
+  const exact = candidateOf(set.items, onItem, onText)
   if (await getDemo($)) return $.ui.toast(rt.t('demoNoSend', { text: exact?.text ?? demoBlendText(point, set.items, rt.lang) }))
   const preview = await getPreview($)
   // The second pick sends the preview the Client showed: by cell when the Client said so (and its text matches), by distance otherwise.

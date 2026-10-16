@@ -98,6 +98,22 @@ describe('map edges', () => {
     expect(engine.count('BLEND')).toBe(0)
   })
 
+  test('a pick whose index points at a relaid list is matched by the text drawn; an unknown text is blended', async ($, on) => {
+    const engine = stand(on)
+    await compass($, 'refresh')
+    const pane = await mountPane($)
+    const items = engine.state('set')?.items ?? []
+    const third = items[2]
+    expect(third).toBeDefined()
+    // The Client drew the third at index 0 (its list was older): the text decides.
+    await pickAt(pane, 0.1, 0.2, false, true, 0, third?.text ?? null)
+    expect(engine.state('preview')?.text).toBe(third?.text)
+    expect(engine.count('BLEND')).toBe(0)
+    // A text no longer on the map: the spot is blended as any other.
+    await pickAt(pane, 0.5, -0.5, false, true, 0, 'gone from the map')
+    expect(engine.count('BLEND')).toBe(1)
+  })
+
   test('a pick on a candidate while a blend is in flight drops the blend and shows the candidate', async ($, on) => {
     const engine = stand(on, { blendDelays: [800] })
     await compass($, 'refresh')

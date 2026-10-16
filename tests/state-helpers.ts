@@ -151,8 +151,8 @@ export const SPACE = 'space@2'
  * A pick as the space posts it; `previewShownWhole` says whether the caption drew the preview in full,
  * `onItem` which candidate's cell was picked (the Client decides both).
  */
-export const pickAt = (pane: Pane, x: number, y: number, fill = false, previewShownWhole = true, onItem: number | null = null) =>
-  pane.post({ kind: 'pick', x, y, fill, previewShownWhole, onItem }, { in: SPACE })
+export const pickAt = (pane: Pane, x: number, y: number, fill = false, previewShownWhole = true, onItem: number | null = null, onText: string | null = null) =>
+  pane.post({ kind: 'pick', x, y, fill, previewShownWhole, onItem, onText }, { in: SPACE })
 
 /** `/compass <args>` as the person runs it. */
 export const compass = ($: Engine, args: string) =>

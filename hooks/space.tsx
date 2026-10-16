@@ -119,7 +119,7 @@ const listen = (surface: ClientSurface<SpaceState>): void => {
     if (e.type === 'down' && e.button === 'left') {
       surface.setState({ ...s, cursor: cell, hover: cell })
       const p = toPoint(cell, surface.columns, rows)
-      surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true, previewShownWhole, isOnPreview: sameCell(previewCell, cell), previewText, onItem: itemAt(lastPlaced, cell) })
+      surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true, previewShownWhole, isOnPreview: sameCell(previewCell, cell), previewText, ...onItemOf(cell) })
     }
   })
   surface.onKey(e => {
@@ -138,7 +138,7 @@ const listen = (surface: ClientSurface<SpaceState>): void => {
     }
     if (e.key === 'return') {
       const p = toPoint(from, surface.columns, rows)
-      return surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true, previewShownWhole, isOnPreview: sameCell(previewCell, from), previewText, onItem: itemAt(lastPlaced, from) })
+      return surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true, previewShownWhole, isOnPreview: sameCell(previewCell, from), previewText, ...onItemOf(from) })
     }
     if (/^[1-4]$/.test(e.key)) surface.post({ kind: 'choose', index: Number(e.key) - 1, fill: e.shift === true })
   })
@@ -149,6 +149,15 @@ let isTicking = true
 
 /** The candidates' cells as last drawn, so a pick says which candidate it landed on; empty until the chips show. */
 let lastPlaced: Grid = {}
+/** The items as last drawn, so a pick names the candidate's text too: an index alone could point at a reordered list. */
+let lastItems: readonly CompassChoice[] = []
+
+/** What a pick says about the candidate under it: its index and text as drawn, or nothing. */
+const onItemOf = (cell: Cell): { onItem: number; onText: string } | Record<string, never> => {
+  const index = itemAt(lastPlaced, cell)
+  const text = index === null ? undefined : lastItems[index]?.text
+  return index === null || text === undefined ? {} : { onItem: index, onText: text }
+}
 
 /** The preview as last drawn (its cell and text), so a pick says whether it landed on it; null when none is shown. */
 let previewCell: Cell | null = null
@@ -226,6 +235,7 @@ const drawGrid = ({ props, view, melt, columns, rows, hasItems }: Scene): Run[][
   // Holding the last map's colors (the four are gone), nothing is laid over the ground.
   const placed = hasItems && melt > 0 ? shownAt(placeItems({ ...props }, columns, rows), melt) : {}
   lastPlaced = hasItems && melt >= CHIPS_AT ? placed : {}
+  lastItems = props.items
   const targets = props.items.filter(i => i.isPrimary).map(i => toCell(i.x, i.y, columns, rows))
   const lights = melt < 1 ? lightsOf(props.gems, view.t, view.frame, columns, rows, { targets, pull: melt }) : []
   const near = nearLights(lights, columns, rows)
