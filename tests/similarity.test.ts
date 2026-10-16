@@ -46,11 +46,14 @@ describe('tokensOf', () => {
     expect(tokensOf('テスト追加')).toEqual(['テス', 'スト', 'ト追', '追加'])
   })
 
-  test('English yields lowercased words plus bigrams, ignoring whitespace', () => {
-    const tokens = tokensOf('Add  CSV')
-    expect(tokens.slice(0, 2)).toEqual(['add', 'csv'])
-    expect(tokens.slice(2)).toEqual(['ad', 'dd', 'dc', 'cs', 'sv'])
-    expect(tokens.some(t => /\s/.test(t))).toBe(false)
+  test('English yields lowercased words without function words, and no bigrams across words', () => {
+    expect(tokensOf('Add  CSV')).toEqual(['add', 'csv'])
+    expect(tokensOf('Add the CSV output to the export')).toEqual(['add', 'csv', 'output', 'export'])
+    expect(tokensOf('Add CSV').some(t => /\s/.test(t))).toBe(false)
+  })
+
+  test('mixed scripts: words for the Latin parts, bigrams for each Japanese run, never across them', () => {
+    expect(tokensOf('parser.ts の型を strict にして')).toEqual(['parser', 'ts', 'strict', 'の型', '型を', 'にし', 'して'])
   })
 
   test('is deterministic', () => {

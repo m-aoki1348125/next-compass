@@ -19,14 +19,30 @@ const num = (v: readonly number[], i: number): number => v[i] ?? 0
 /** Point at index i, the origin when out of range. */
 const pt = (ps: readonly Point[], i: number): Point => ps[i] ?? ORIGIN
 
-/** Tokens of a text: lowercased word tokens (Latin/digits runs) plus character bigrams over the non-space text; CJK gets bigrams only. */
+/** English function words: shared by most instructions, they say nothing about what one is about. */
+const STOPWORDS = new Set([
+  'a', 'an', 'the', 'to', 'of', 'in', 'on', 'for', 'and', 'or', 'with', 'it', 'is', 'be', 'this', 'that', 'by', 'at', 'from', 'as', 'into', 'up', 'its', 'then', 'so',
+])
+
+/** Character bigrams of one run of text; a lone character is a token of its own. */
+const bigramsOf = (run: string): string[] => {
+  const chars = Array.from(run)
+  if (chars.length === 1) return chars
+  return chars.slice(1).map((c, i) => `${chars[i] ?? ''}${c}`)
+}
+
+/**
+ * Tokens of a text: Latin words and numbers (lowercased, function words
+ * dropped), and character bigrams over each run of other scripts (Japanese,
+ * symbols). Bigrams never cross a Latin word, so "the parser" and "parser.ts"
+ * share only what they mean to share.
+ */
 export const tokensOf = (text: string): string[] => {
   const lower = text.toLowerCase()
-  const words = lower.match(/[a-z0-9]+/g) ?? []
-  const chars = Array.from(lower.replace(/\s+/g, ''))
-  if (chars.length === 1) return [...words, ...chars]
-  const bigrams = chars.slice(1).map((c, i) => `${chars[i] ?? ''}${c}`)
-  return [...words, ...bigrams]
+  const words = (lower.match(/[a-z0-9]+/g) ?? []).filter(w => !STOPWORDS.has(w))
+  // A lone ASCII punctuation mark (the dot of "parser.ts", a comma) is a separator, not a token.
+  const runs = (lower.match(/[^\sa-z0-9]+/g) ?? []).filter(run => !/^[!-\/:-@[-`{-~]$/.test(run))
+  return [...words, ...runs.flatMap(bigramsOf)]
 }
 
 /** Term counts of a token list. */
@@ -194,8 +210,32 @@ export const layoutTexts = (texts: readonly string[], previous: ReadonlyMap<stri
   })
   const reference = shared.map(s => s.point)
   const pairs = shared.map((s, j) => ({ from: s.index, to: j }))
-  return fitToSquare(alignTo(points, reference, pairs))
+  return separate(fitToSquare(alignTo(points, reference, pairs)), MIN_GAP, DEFAULT_LIMIT)
 }
+
+/** How far apart two laid-out spots are kept: texts alike to nothing else would otherwise share one point. */
+export const MIN_GAP = 0.15
+
+const clampTo = (p: Point, limit: number): Point => ({ x: Math.max(-limit, Math.min(limit, p.x)), y: Math.max(-limit, Math.min(limit, p.y)) })
+
+/** Eight directions, the one away from the centre first, so a nudge prefers outward but can go anywhere. */
+const directionsFrom = (p: Point): Point[] => {
+  const base = Math.hypot(p.x, p.y) < 1e-6 ? Math.PI / 4 : Math.atan2(p.y, p.x)
+  return Array.from({ length: 8 }, (_, k) => ({ x: Math.cos(base + (k * Math.PI) / 4), y: Math.sin(base + (k * Math.PI) / 4) }))
+}
+
+/** `p` moved off the `taken` spots: growing rings around it, outward first, until it stands `gap` apart; `p` itself if none does. */
+export const nudgeOff = (p: Point, taken: readonly Point[], gap: number, limit: number): Point => {
+  const crowded = (q: Point) => taken.some(t => Math.hypot(t.x - q.x, t.y - q.y) < gap)
+  if (!crowded(p)) return p
+  const dirs = directionsFrom(p)
+  const tries = Array.from({ length: 12 }, (_, k) => k + 1).flatMap(k => dirs.map(d => clampTo({ x: p.x + d.x * gap * k * 0.8, y: p.y + d.y * gap * k * 0.8 }, limit)))
+  return tries.find(q => !crowded(q)) ?? p
+}
+
+/** The points in order, each nudged off the ones before it, so no two share a spot. Deterministic. */
+export const separate = (points: readonly Point[], gap: number, limit: number): Point[] =>
+  points.reduce<Point[]>((done, p) => [...done, nudgeOff(p, done, gap, limit)], [])
 
 const dist = (a: Point, b: Point): number => Math.hypot(a.x - b.x, a.y - b.y)
 

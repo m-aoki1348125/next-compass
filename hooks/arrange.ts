@@ -1,7 +1,7 @@
 import type { CompassAxes, CompassChoice, CompassSet } from '../types'
 import { PRIMARY_COUNT } from './compass'
 import type { ParsedSet, Picked } from './compass'
-import { layoutTexts, nearestTo, similarityMatrix, spreadPick, toDirections } from './similarity'
+import { layoutTexts, nearestTo, nudgeOff, similarityMatrix, spreadPick, toDirections } from './similarity'
 import type { Point } from './similarity'
 
 /**
@@ -71,14 +71,6 @@ const LIMIT = 0.85
 
 const clampTo = (p: Point): Point => ({ x: Math.max(-LIMIT, Math.min(LIMIT, p.x)), y: Math.max(-LIMIT, Math.min(LIMIT, p.y)) })
 
-/** `p` moved away from the taken spots, a step at a time outward from the centre, until it stands apart. */
-const nudgeOff = (p: Point, taken: readonly Point[]): Point => {
-  const crowded = (q: Point) => taken.some(t => Math.hypot(t.x - q.x, t.y - q.y) < CROWDED)
-  const out = Math.hypot(p.x, p.y) < 1e-6 ? { x: 0.7, y: 0.7 } : { x: p.x / Math.hypot(p.x, p.y), y: p.y / Math.hypot(p.x, p.y) }
-  const tries = Array.from({ length: 12 }, (_, k) => clampTo({ x: p.x + out.x * CROWDED * (k + 1) * 0.8, y: p.y + out.y * CROWDED * (k + 1) * 0.8 }))
-  return crowded(p) ? (tries.find(q => !crowded(q)) ?? p) : p
-}
-
 /**
  * Spots for texts joining a map whose candidates stay where they are: each
  * newcomer sits at the mean of the placed spots weighted by its similarity to
@@ -96,7 +88,7 @@ export const placeAmong = (placed: readonly { text: string; spot: Point }[], tex
       total <= 1e-9
         ? { x: 0, y: 0 }
         : placed.reduce((acc, p, j) => ({ x: acc.x + p.spot.x * ((weights[j] ?? 0) / total), y: acc.y + p.spot.y * ((weights[j] ?? 0) / total) }), { x: 0, y: 0 })
-    return [...done, nudgeOff(clampTo(mean), [CENTRE, ...placed.map(p => p.spot), ...done])]
+    return [...done, nudgeOff(clampTo(mean), [CENTRE, ...placed.map(p => p.spot), ...done], CROWDED, LIMIT)]
   }, [])
 }
 

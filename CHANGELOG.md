@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1 — 2026-10-16
+
+- Similarity tokens: Latin words without English function words (`the`, `to`, …), character bigrams only
+  within each run of other scripts, never across a Latin word; a lone punctuation mark is a separator. A
+  goal like "make the parser types strict" now finds the candidate about parser types, not the one that
+  shares "the parser".
+- Candidates alike to nothing else no longer share one spot: the layout keeps every pair at least 0.15
+  apart, deterministically.
+- Tests for empty, whitespace and symbols-only input, and for replies and conversations that mix
+  Japanese and English in one line (34 cases).
+
 ## 0.3.0 — 2026-10-16
 
 - New option `choiceLanguage` (auto / ja / en): the language every predicted instruction, pick and
