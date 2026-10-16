@@ -4,7 +4,7 @@ import type { CompassChoice } from '../types'
 import { blend, cutToCells, fitRows, fluxCell, mapCell } from './field'
 import type { Cell as FieldCell, Run } from './field'
 import { lightsOf, lit, nearLights, rainbow } from './flux'
-import { MOVES, caption, center, cursorOf, placeItems, paint, sameCell, toCell, toPoint } from './map'
+import { MOVES, caption, center, cursorOf, itemAt, placeItems, paint, sameCell, toCell, toPoint } from './map'
 import type { Cell, Grid, MapState } from './map'
 
 /**
@@ -119,7 +119,7 @@ const listen = (surface: ClientSurface<SpaceState>): void => {
     if (e.type === 'down' && e.button === 'left') {
       surface.setState({ ...s, cursor: cell, hover: cell })
       const p = toPoint(cell, surface.columns, rows)
-      surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true, previewShownWhole, isOnPreview: sameCell(previewCell, cell), previewText })
+      surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true, previewShownWhole, isOnPreview: sameCell(previewCell, cell), previewText, onItem: itemAt(lastPlaced, cell) })
     }
   })
   surface.onKey(e => {
@@ -138,7 +138,7 @@ const listen = (surface: ClientSurface<SpaceState>): void => {
     }
     if (e.key === 'return') {
       const p = toPoint(from, surface.columns, rows)
-      return surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true, previewShownWhole, isOnPreview: sameCell(previewCell, from), previewText })
+      return surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true, previewShownWhole, isOnPreview: sameCell(previewCell, from), previewText, onItem: itemAt(lastPlaced, from) })
     }
     if (/^[1-4]$/.test(e.key)) surface.post({ kind: 'choose', index: Number(e.key) - 1, fill: e.shift === true })
   })
@@ -146,6 +146,9 @@ const listen = (surface: ClientSurface<SpaceState>): void => {
 
 /** Whether the clock's ticks advance the field: false while the map is still, so nothing is recomputed. */
 let isTicking = true
+
+/** The candidates' cells as last drawn, so a pick says which candidate it landed on; empty until the chips show. */
+let lastPlaced: Grid = {}
 
 /** The preview as last drawn (its cell and text), so a pick says whether it landed on it; null when none is shown. */
 let previewCell: Cell | null = null
@@ -222,6 +225,7 @@ type Scene = {
 const drawGrid = ({ props, view, melt, columns, rows, hasItems }: Scene): Run[][] => {
   // Holding the last map's colors (the four are gone), nothing is laid over the ground.
   const placed = hasItems && melt > 0 ? shownAt(placeItems({ ...props }, columns, rows), melt) : {}
+  lastPlaced = hasItems && melt >= CHIPS_AT ? placed : {}
   const targets = props.items.filter(i => i.isPrimary).map(i => toCell(i.x, i.y, columns, rows))
   const lights = melt < 1 ? lightsOf(props.gems, view.t, view.frame, columns, rows, { targets, pull: melt }) : []
   const near = nearLights(lights, columns, rows)

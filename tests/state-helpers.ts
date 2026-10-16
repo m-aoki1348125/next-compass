@@ -147,9 +147,12 @@ const INITIAL: { [K in Keys]: PluginState['next-compass'][K] } = {
 /** The key of the pane's one Client, as register.tsx names it. */
 export const SPACE = 'space@2'
 
-/** A pick as the space posts it; `previewShownWhole` says whether the caption drew the preview in full (the Client decides). */
-export const pickAt = (pane: Pane, x: number, y: number, fill = false, previewShownWhole = true) =>
-  pane.post({ kind: 'pick', x, y, fill, previewShownWhole }, { in: SPACE })
+/**
+ * A pick as the space posts it; `previewShownWhole` says whether the caption drew the preview in full,
+ * `onItem` which candidate's cell was picked (the Client decides both).
+ */
+export const pickAt = (pane: Pane, x: number, y: number, fill = false, previewShownWhole = true, onItem: number | null = null) =>
+  pane.post({ kind: 'pick', x, y, fill, previewShownWhole, onItem }, { in: SPACE })
 
 /** `/compass <args>` as the person runs it. */
 export const compass = ($: Engine, args: string) =>

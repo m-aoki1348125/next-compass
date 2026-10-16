@@ -11,6 +11,9 @@
   lighter tint, written over the field with no colored box; the pointer is a white `✛` on a soft glow of
   the ground instead of a white block, the mouse a `✧`. At rest the map carries no pointer and no
   caption: the pointer appears where the keys or the mouse first put it (the keys start from the middle).
+- A pick on a candidate itself (its gem, number or name on the map) previews that candidate's own words,
+  with no model call; the second pick sends them. Only a spot off every candidate is blended from its
+  position. Before, every pick was blended, so a pick right on a choice could send different words.
 - The band numbers its choices (`1 …`, in the choice's color) instead of pointing with `↑ → ↓ ←`: the
   number is the key that sends it.
 - Option `keyMode` and the arrow-key cross are removed: the arrow keys belong to Claude Code's own history

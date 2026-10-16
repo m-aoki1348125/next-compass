@@ -19,7 +19,8 @@ export type MapState = { cursor: Cell | null; hover: Cell | null; frame: number 
 /** The keyboard cursor: where it was put, else the middle of the grid as laid out now. */
 export const cursorOf = (state: MapState, columns: number, rows: number): Cell => state.cursor ?? center(columns, rows)
 
-type Glyph = { char: string; color: string; bg?: string; bold?: boolean }
+/** `item`: the index of the candidate this cell belongs to (its chip or its ✦), so a pick there is a pick of it. */
+type Glyph = { char: string; color: string; bg?: string; bold?: boolean; item?: number }
 
 type Painted = Glyph & { bg: string }
 
@@ -110,8 +111,8 @@ const placeChip = (grid: Grid, props: MapProps, index: number, columns: number, 
       .filter(r => r >= 0 && r < rows)
       .find(r => chipCells(widths, start, r).every(k => grid[k] === undefined)) ?? cell.row
   const cells = chipCells(widths, start, row)
-  const covered = Object.fromEntries(cells.map(k => [k, { char: '', color: '' }]))
-  const heads = chip.map((g, i) => [chipCells(widths.slice(0, i + 1), start, row).slice(-widths[i]!)[0]!, g] as const)
+  const covered = Object.fromEntries(cells.map(k => [k, { char: '', color: '', item: index }]))
+  const heads = chip.map((g, i) => [chipCells(widths.slice(0, i + 1), start, row).slice(-widths[i]!)[0]!, { ...g, item: index }] as const)
   return { ...grid, ...covered, ...Object.fromEntries(heads) }
 }
 
@@ -134,7 +135,7 @@ const placeExtra = (grid: Grid, props: MapProps, index: number, columns: number,
     [-1, 0, 1].every(d => grid[keyOf(c.col + d, c.row)] === undefined)
   const spot = around(toCell(item.x, item.y, columns, rows), 4).find(isFree)
   if (spot === undefined) return grid
-  const glyph = { char: '✦', color: lighten(colorOf(props.items, index), 0.45), bold: true }
+  const glyph = { char: '✦', color: lighten(colorOf(props.items, index), 0.45), bold: true, item: index }
   return { ...grid, [keyOf(spot.col, spot.row)]: glyph }
 }
 
@@ -152,6 +153,9 @@ export const placeItems = (props: MapProps, columns: number, rows: number): Grid
     .filter(({ item }) => !item.isPrimary)
     .reduce((grid, { index }) => placeExtra(grid, props, index, columns, rows), chips)
 }
+
+/** The candidate drawn at a cell (its chip, name included, or its ✦), or null: a pick there means that candidate, as written. */
+export const itemAt = (placed: Grid, cell: Cell): number | null => placed[keyOf(cell.col, cell.row)]?.item ?? null
 
 export const MOVES: Record<string, Cell> = {
   up: { col: 0, row: -1 },

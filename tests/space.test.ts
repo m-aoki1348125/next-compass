@@ -11,13 +11,8 @@ const SPACE = 'space@2'
 const TICK_MS = 160
 const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
 
-const CHOICES = [
-  'AXES: 進める | 広げる | 調べる | 固める',
-  '1: Implement the export feature',
-  '2: Refactor the parser module',
-  '3: Investigate the flaky test',
-  '4: Add tests for the parser',
-].join('\n')
+const FOUR = ['Implement the export feature', 'Refactor the parser module', 'Investigate the flaky test', 'Add tests for the parser']
+const CHOICES = ['AXES: 進める | 広げる | 調べる | 固める', ...FOUR.map((t, i) => `${i + 1}: ${t}`)].join('\n')
 /** Three extras, as texts: the map lays them out itself. */
 const EXTRAS = ['- Write the README section', '- Profile the build', '- Split the config file'].join('\n')
 /** Japanese UI, so the strings the tests read are the ones the person reads. */
@@ -179,6 +174,27 @@ describe('one space from the free field to the map', () => {
     expect(anyChip(back)).toBe(false)
     const caption = (await rowsOf(pane)).slice(16).join('\n')
     expect(caption).toContain('Claude が作業中です')
+  })
+
+  test('a click on a candidate\'s chip previews its own words, a second click sends them; a blend is never asked for', async ($, on) => {
+    const { engine, pane } = await working($, on)
+    await $.command.run(command('refresh'))
+    await pane.redraw()
+    await pane.advance(9 * TICK_MS)
+    const rows = (await rowsOf(pane)).slice(0, 16)
+    const row = rows.findIndex(r => / 1 /.test(r))
+    expect(row).toBeGreaterThanOrEqual(0)
+    // The column of the "1", in cells: a CJK name of another chip to its left takes two cells per character.
+    const before = Array.from(rows[row] ?? '').slice(0, Array.from(rows[row] ?? '').indexOf('1'))
+    const col = before.reduce((n, c) => n + (/[\u3000-\u9fff\uff00-\uffef]/.test(c) ? 2 : 1), 0)
+    await pane.pointer({ type: 'down', x: col, y: row, button: 'left' })
+    await pane.redraw()
+    const caption = (await rowsOf(pane)).slice(16).join('\n')
+    const own = FOUR.find(t => caption.includes(t))
+    expect(own).toBeDefined()
+    expect(engine.submitted).toEqual([])
+    await pane.pointer({ type: 'down', x: col, y: row, button: 'left' })
+    expect(engine.submitted).toEqual([own])
   })
 
   test('a click while the space is still melting does nothing', async ($, on) => {

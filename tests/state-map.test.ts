@@ -82,6 +82,39 @@ describe('map edges', () => {
     expect(engine.four()).toHaveLength(4)
   })
 
+  test('a pick on a candidate itself previews its own words, with no blend call; the second pick sends them', async ($, on) => {
+    const engine = stand(on)
+    await compass($, 'refresh')
+    const pane = await mountPane($)
+    const second = engine.state('set')?.items[1]
+    expect(second).toBeDefined()
+    await pickAt(pane, 0.1, 0.2, false, true, 1)
+    expect(engine.count('BLEND')).toBe(0)
+    expect(engine.state('phase')).toBe('idle')
+    expect(engine.state('preview')).toEqual({ x: 0.1, y: 0.2, text: second?.text })
+    expect(engine.submitted).toEqual([])
+    await pickAt(pane, 0.1, 0.2, false, true, 1)
+    expect(engine.submitted).toEqual([second?.text])
+    expect(engine.count('BLEND')).toBe(0)
+  })
+
+  test('a pick on a candidate while a blend is in flight drops the blend and shows the candidate', async ($, on) => {
+    const engine = stand(on, { blendDelays: [800] })
+    await compass($, 'refresh')
+    const pane = await mountPane($)
+    const post = pickAt(pane, 0.4, 0.4)
+    await engine.clock.settle()
+    expect(engine.state('phase')).toBe('blending')
+    const third = engine.state('set')?.items[2]
+    expect(third).toBeDefined()
+    await pickAt(pane, -0.3, 0.1, false, true, 2)
+    expect(engine.state('phase')).toBe('idle')
+    expect(engine.state('preview')?.text).toBe(third?.text)
+    await engine.clock.advance(800)
+    await post
+    expect(engine.state('preview')?.text).toBe(third?.text)
+  })
+
   test('a second pick at the same spot sends the preview without another blend', async ($, on) => {
     const engine = stand(on)
     await compass($, 'refresh')

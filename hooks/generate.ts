@@ -382,14 +382,17 @@ const near = (a: Point, b: Point): boolean => Math.hypot(a.x - b.x, a.y - b.y) <
  * A pick on the map: the first at a spot writes the instruction for it and
  * shows it under the map; a second pick at the same spot sends it (Shift, or
  * a preview the caption could not show whole, fills the prompt box instead).
- * A pick elsewhere writes anew.
+ * A pick elsewhere writes anew. `onItem`: the candidate drawn at the picked
+ * cell (the Client says), whose text is then the instruction as written, no
+ * blend; a spot off every candidate is blended from its position.
  */
-export type PickSpot = { point: Point; fill: boolean; isOnPreview: boolean; previewText: string | null }
+export type PickSpot = { point: Point; fill: boolean; isOnPreview: boolean; previewText: string | null; onItem: number | null }
 
-export async function pick($: $, rt: Runtime, { point, fill, isOnPreview, previewText }: PickSpot): Promise<void> {
+export async function pick($: $, rt: Runtime, { point, fill, isOnPreview, previewText, onItem }: PickSpot): Promise<void> {
   const set = await getSet($)
   if (set === null) return
-  if (await getDemo($)) return $.ui.toast(rt.t('demoNoSend', { text: demoBlendText(point, set.items, rt.lang) }))
+  const exact = onItem === null ? undefined : set.items[onItem]
+  if (await getDemo($)) return $.ui.toast(rt.t('demoNoSend', { text: exact?.text ?? demoBlendText(point, set.items, rt.lang) }))
   const preview = await getPreview($)
   // The second pick sends the preview the Client showed: by cell when the Client said so (and its text matches), by distance otherwise.
   const isSameText = previewText === null || previewText === preview?.text
@@ -397,6 +400,11 @@ export async function pick($: $, rt: Runtime, { point, fill, isOnPreview, previe
   const seq = (pickSeq = pickSeq + 1)
   const id = latest
   await putPreview($, null)
+  if (exact !== undefined) {
+    // On a candidate itself: its own words, shown at once; a blend in flight for an earlier spot is dropped.
+    if ((await getPhase($)) === 'blending') await setPhase($, 'idle', null)
+    return putPreview($, { x: point.x, y: point.y, text: exact.text })
+  }
   await setPhase($, 'blending', null)
   const goal = await getGoal($)
   const reply = await timed($, rt, () => ask($, rt, buildBlendPrompt({ point, axes: set.axes, items: set.items, goal, lang: choiceLang(rt) }), 300, BLEND_TIMEOUT_MS))

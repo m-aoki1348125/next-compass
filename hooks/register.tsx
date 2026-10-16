@@ -287,6 +287,7 @@ export const register: Register = (on, options) => {
         fill: fill || data.previewShownWhole !== true,
         isOnPreview: data.isOnPreview === true,
         previewText: typeof data.previewText === 'string' ? data.previewText : null,
+        onItem: typeof data.onItem === 'number' ? Math.trunc(data.onItem) : null,
       })
     }
     return next(e)
