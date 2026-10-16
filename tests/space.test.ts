@@ -192,6 +192,29 @@ describe('one space from the free field to the map', () => {
 })
 
 describe('flux while Claude works', () => {
+  test('waiting for the person, the empty pane is still; it moves only once Claude works', JA, async ($, on) => {
+    engineBeneath(on)
+    on('turn.complete', (_$, e) => ({ text: e.answer }))
+    const ui = await mountPane($)
+    await ui.resize({ columns: 48, rows: 14, in: SPACE })
+    const idle = await rowsOf(ui)
+    await ui.advance(1000)
+    expect((await rowsOf(ui)).slice(0, 12)).toEqual(idle.slice(0, 12))
+
+    await $.turn.start({ text: 'fix the parser', turnId: 't1' })
+    await ui.redraw()
+    const working = await rowsOf(ui)
+    await ui.advance(700)
+    expect((await rowsOf(ui)).slice(0, 12)).not.toEqual(working.slice(0, 12))
+
+    // The turn ends without an answer (aborted): nothing to show, the field settles and stops.
+    await $.turn.complete({ answer: '', durationMs: 1, isAborted: true, turnId: 't1', reason: 'aborted' })
+    await ui.advance(2000)
+    const settled = await rowsOf(ui)
+    await ui.advance(1000)
+    expect((await rowsOf(ui)).slice(0, 12)).toEqual(settled.slice(0, 12))
+  })
+
   test('the empty pane moves, and each tool call drifts in as a gem, never as text', JA, async ($, on) => {
     engineBeneath(on)
     const ui = await mountPane($)

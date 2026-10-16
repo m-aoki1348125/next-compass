@@ -2,3 +2,5 @@
 .claude-plugin/types/
 node_modules/
 .DS_Store
+# Internal design record (session timeline, local paths); kept beside the repo, not published
+CONCEPT.md

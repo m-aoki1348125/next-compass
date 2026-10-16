@@ -102,7 +102,7 @@ has just asked you a numbered question, type the digit with a word (`option 1`),
 
 ## Requirements
 
-- Claude Code with mods (2.1.287 or later). The map draws in the terminal and the desktop app.
+- Claude Code with mods. Developed and tested with 2.1.301; the map draws in the terminal and the desktop app.
 - Organizations can block user-installed mods; if `/compass` does not exist after installing, ask your
   administrator.
 
@@ -123,7 +123,6 @@ claude plugin test .              # the test suite
 npx -y -p typescript tsc -p . --noEmit
 ```
 
-[CONCEPT.md](CONCEPT.md) records the design decisions and their reasons (Japanese).
 See [CHANGELOG.md](CHANGELOG.md) for releases.
 
 ## License

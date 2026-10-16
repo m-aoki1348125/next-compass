@@ -94,7 +94,7 @@ Claude Code 本体の許可確認がそのまま働きます。
 
 ## 必要なもの
 
-- mod に対応した Claude Code（2.1.287 以降）。マップは端末とデスクトップアプリで描画されます。
+- mod に対応した Claude Code。2.1.301 で開発・確認しました。マップは端末とデスクトップアプリで描画されます。
 - 組織の設定で利用者による mod のインストールが禁止されていることがあります。インストール後に `/compass` が
   なければ管理者に確認してください。
 
@@ -115,7 +115,7 @@ claude plugin test .              # テスト
 npx -y -p typescript tsc -p . --noEmit
 ```
 
-設計の判断とその理由は [CONCEPT.md](CONCEPT.md) に、変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。
+変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。
 
 ## ライセンス
 

@@ -48,6 +48,8 @@ map that means what it shows.
 - A reload resets the phase to idle.
 
 ### Review fixes before release
+- The field moves only while Claude works (and during the melt into or out of the map); waiting for the
+  person, before any turn or after `/clear`, it is still, like the settled map.
 - A preview the caption had to cut, or a digit pressed on the map (which shows chips, not text), fills the
   prompt box instead of sending. A layout change (final pick, extras, Claude Code's suggestion) drops a
   preview and any blend in flight, so a stale instruction is never sent for a moved spot.

@@ -57,7 +57,8 @@ const MELT_TICKS = 9
 const WORK_SPEED = 0.08
 /** A settled map is still: its colors mean positions, which do not move. */
 const MAP_SPEED = 0
-const IDLE_SPEED = 0.02
+/** Waiting for the person (no turn running, no map yet), the field is still too: it moves only while Claude works. */
+const IDLE_SPEED = 0
 /** Rows under the grid: the label while Claude works, the blend under the pointer once the four are in. */
 const CAPTION_ROWS = 2
 /** How far the melt must be before the extras, then the chips and the cursor, show. */
@@ -285,7 +286,8 @@ const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): Rende
     surface.setState(view)
   }
   const melt = meltOf(view)
-  const isStill = mode === 'map' && melt >= 1
+  // The field moves only while Claude works or a melt is under way; a settled map and an idle wait are still.
+  const isStill = melt >= 1 ? mode === 'map' : melt <= 0 && mode === 'flux' && !props.isWorking
   tick(!isStill)
   const rows = gridRows(surface)
   const { columns } = surface
