@@ -21,6 +21,7 @@ import {
 } from './generate'
 import type { Runtime } from './generate'
 import { makeT, resolveLang } from './i18n'
+import type { Translate } from './i18n'
 import {
   getActivity,
   getDemo,
@@ -74,6 +75,23 @@ const kindOf = (tool: string): number => {
   if (/^(Bash|PowerShell|BashOutput)$/.test(tool)) return 1
   if (/^(Read|Grep|Glob|LS|WebFetch|WebSearch|ToolSearch)$/.test(tool)) return 2
   return 3
+}
+
+const KIND_NAMES = ['kindEdit', 'kindRun', 'kindRead', 'kindOther'] as const
+/** The kinds in the order the label names them: read, edit, run, other. */
+const KIND_ORDER = [2, 0, 1, 3] as const
+
+/**
+ * The recent tool calls by kind of work, as " · 読み取り(✦✦) · 編集(✦)": one gem
+ * per call, the same gems that drift in the field, named and grouped. A kind
+ * with no call is left out.
+ */
+const kindsLine = (t: Translate, tools: readonly string[]): string => {
+  const counts = tools.map(kindOf).reduce<number[]>((acc, k) => acc.map((n, i) => (i === k ? n + 1 : n)), [0, 0, 0, 0])
+  const parts = KIND_ORDER.filter(k => (counts[k] ?? 0) > 0).map(k =>
+    t('kindCount', { name: t(KIND_NAMES[k] ?? 'kindOther'), gems: '✦'.repeat(counts[k] ?? 0) }),
+  )
+  return parts.length === 0 ? '' : ` · ${parts.join(' · ')}`
 }
 
 const NO_TIMINGS: CompassTimings = { contextMs: 0, choicesMs: null, extrasMs: null, layoutMs: null, bandMs: null, mapMs: null, isPrefetched: false }
@@ -373,7 +391,7 @@ export const register: Register = (on, options) => {
     const label = isBusy
       ? t('paneThinking')
       : isWorking
-        ? t('paneWorking', { demo: isDemo ? t('demoTag') : '', count: words.length > 0 ? t('paneCount', { n: words.length }) : '' })
+        ? t('paneWorking', { demo: isDemo ? t('demoTag') : '', kinds: kindsLine(t, words) })
         : t('paneIdle')
     const labels = set === null ? [] : [set.axes.up, set.axes.right, set.axes.down, set.axes.left]
     const tm: CompassTimings = set?.timings ?? NO_TIMINGS

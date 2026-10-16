@@ -236,6 +236,21 @@ describe('flux while Claude works', () => {
     expect(after.slice(0, 12)).not.toEqual(before.slice(0, 12))
     expect(after.slice(0, 12).every(r => cellsOf(r) === 48)).toBe(true)
   })
+
+  test('the working label names the kinds of work with one gem per call, never a count', JA, async ($, on) => {
+    engineBeneath(on)
+    const ui = await mountPane($)
+    await ui.resize({ columns: 80, rows: 14, in: SPACE })
+    await $.turn.start({ text: 'fix the parser', turnId: 't1' })
+    await $.tool.call({ tool: 'Read', file_path: '/work/a.ts' })
+    await $.tool.call({ tool: 'Edit', file_path: '/work/a.ts', old_string: 'a', new_string: 'b' })
+    await $.tool.call({ tool: 'Read', file_path: '/work/b.ts' })
+    await $.tool.call({ tool: 'Bash', command: 'ls' })
+    await ui.redraw()
+    const rows = (await rowsOf(ui)).join('\n')
+    expect(rows).toContain('Claude が作業中です · 読み取り(✦✦) · 編集(✦) · コマンド実行(✦)')
+    expect(rows).not.toMatch(/件の操作|意味空間が動いて/)
+  })
 })
 
 describe('big spaces stay drawn', () => {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2 — 2026-10-16
+
+- The map's working label no longer counts "(5 actions)": it names the kinds of work this turn, with one
+  gem per call, the same gems that drift in the field: `✦ Claude is working · reading (✦✦) · editing (✦)
+  · running commands (✦)`. The kinds keep a fixed order (read, edit, run, other tools), so the line does
+  not reshuffle as work goes on. "The meaning space is moving" is gone from the label; the motion shows.
+
 ## 0.3.1 — 2026-10-16
 
 - Similarity tokens: Latin words without English function words (`the`, `to`, …), character bigrams only
