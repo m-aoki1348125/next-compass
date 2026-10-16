@@ -56,7 +56,7 @@
     "showMap": {
       "type": "boolean",
       "title": "Show the meaning map",
-      "description": "Open the meaning map pane at session start (it docks beside the transcript in a wide fullscreen terminal).",
+      "description": "Open the meaning map pane at session start (it docks beside the transcript in a wide fullscreen terminal or in the desktop app).",
       "default": true
     },
     "extraCount": {
