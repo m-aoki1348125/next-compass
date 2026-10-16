@@ -5,8 +5,16 @@ import type { On, RenderElement, RenderPropsOf } from 'claude-code'
 /** Edge cases of the flow: slash commands, a demo cut short, /clear, unknown verbs, long Japanese. */
 
 const LONG = 'エクスポート機能を仕上げてテストを追加し、README の使い方も書き直してから PR を作って'
-const PAIR_V = ['AXIS: 進める | 調べる', `1: ${LONG}`, '3: Investigate the flaky test'].join('\n')
-const PAIR_H = ['AXIS: 広げる | 固める', '2: Refactor the parser module', '4: Add tests for the parser'].join('\n')
+const CHOICES = [
+  'AXES: 進める | 広げる | 調べる | 固める',
+  `1: ${LONG}`,
+  '2: Refactor the parser module',
+  '3: Investigate the flaky test',
+  '4: Add tests for the parser',
+].join('\n')
+/** Japanese UI, so the strings the tests read are the ones the person reads. */
+const JA = { options: { language: 'ja' } }
+const SPACE = 'space@2'
 const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
 
 const command = (args: string) => ({
@@ -25,11 +33,12 @@ const bandProps = (bodyColumns: number): RenderPropsOf['AbovePrompt'] => ({
   view: {} as RenderPropsOf['AbovePrompt']['view'],
 })
 
-const engine = (on: On, submitted: string[], asked: string[] = []) => {
+const engine = (on: On, submitted: string[], asked: string[] = [], filled: string[] = []) => {
   const clock = mock.clock(on, { now: 1_000_000 })
+  mock.store(on)
   on('model.complete', (_$, e) => {
     asked.push(e.prompt)
-    const text = e.prompt.includes('(CHOICES-V)') ? PAIR_V : e.prompt.includes('(CHOICES-H)') ? PAIR_H : ''
+    const text = e.prompt.includes('(CHOICES)') ? CHOICES : ''
     return { value: { isAnswered: true as const, text, usage: USAGE } }
   })
   on('session.messages', () => ({ value: [] }))
@@ -42,11 +51,26 @@ const engine = (on: On, submitted: string[], asked: string[] = []) => {
     submitted.push(e.text)
     return { text: e.text }
   })
+  on('prompt.fill', (_$, e) => {
+    filled.push(e.text)
+    return { isFilled: true }
+  })
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
     return h(Text, {}, 'engine') as RenderElement
   })
   return clock
+}
+
+type Band = { find: (q: { key: string }) => Promise<{ text: string } | undefined> }
+
+/** The key of the band's button whose text starts with `head`: the four take their keys by direction. */
+const keyOf = async (band: Band, head: string): Promise<string> => {
+  for (const i of [0, 1, 2, 3]) {
+    const button = await band.find({ key: `pick:${i}` })
+    if (button !== undefined && button.text.includes(head)) return `pick:${i}`
+  }
+  throw new Error(`no button shows "${head}"`)
 }
 
 /** Cells a text takes on the terminal: two for a wide character. */
@@ -95,7 +119,7 @@ describe('edges of the flow', () => {
     await $.prompt.submit(notification('t1'))
     await $.turn.complete({ ...END, turnId: 't1' })
     await clock.settle()
-    expect(asked.filter(p => p.includes('(CHOICES-V)'))).toHaveLength(1)
+    expect(asked.filter(p => p.includes('(CHOICES)'))).toHaveLength(1)
     const band = await mountBand($)
     expect(await band.find({ key: 'pick:3' })).toBeDefined()
   })
@@ -113,7 +137,7 @@ describe('edges of the flow', () => {
     await clock.settle()
     const after = await mountBand($)
     expect(await after.find({ key: 'pick:0' })).toBeDefined()
-    expect(asked.filter(p => p.includes('(CHOICES-V)'))).toHaveLength(2)
+    expect(asked.filter(p => p.includes('(CHOICES)'))).toHaveLength(2)
   })
 
   test('hide hides the band only: the four are still made for the map', async ($, on) => {
@@ -129,11 +153,11 @@ describe('edges of the flow', () => {
       requestId: 'next-compass-map',
       props: { title: 't', isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { bodyRows: 30, offset: 0 }, view: {} } as never,
     })
-    await pane.resize({ columns: 56, rows: 18, in: 'space@1' })
-    expect(await pane.find({ in: 'space@1', text: /1 進める/ })).toBeDefined()
+    await pane.resize({ columns: 56, rows: 18, in: SPACE })
+    expect(await pane.find({ in: SPACE, text: /[1-4] 進める/ })).toBeDefined()
   })
 
-  test('real choices end a demo, so they send', async ($, on) => {
+  test('real choices end a demo, so they send', JA, async ($, on) => {
     const submitted: string[] = []
     const clock = engine(on, submitted)
     await $.command.run(command('demo'))
@@ -141,7 +165,8 @@ describe('edges of the flow', () => {
     await $.command.run(command('refresh'))
     const band = await $.ui.mount({ plugin: 'next-compass', surface: 'terminal', component: 'AbovePrompt', props: bandProps(100) })
     expect(await band.find({ text: /（デモ）/ })).toBe(undefined)
-    await band.press({ key: 'pick:1' })
+    const key = await keyOf(band, 'Refactor the parser module')
+    await band.press({ key })
     expect(submitted).toEqual(['Refactor the parser module'])
     await clock.advance(6000)
     expect(await band.find({ text: /Investigate the flaky test/ })).toBe(undefined)
@@ -155,18 +180,38 @@ describe('edges of the flow', () => {
     expect(await band.find({ key: 'pick:0' })).toBe(undefined)
   })
 
-  test('an unknown verb says how to use the command', async ($, on) => {
+  test('an unknown verb says how to use the command', JA, async ($, on) => {
     engine(on, [])
     const result = await $.command.run(command('foo'))
     expect(result.text).toContain('「foo」は使えません')
   })
 
-  test('a long Japanese choice is cut to the band by cells, not characters', async ($, on) => {
-    engine(on, [])
+  test('a long Japanese choice is cut to the band by cells, not characters, and fills the prompt box', async ($, on) => {
+    const submitted: string[] = []
+    const filled: string[] = []
+    engine(on, submitted, [], filled)
     await $.command.run(command('refresh'))
     const band = await $.ui.mount({ plugin: 'next-compass', surface: 'terminal', component: 'AbovePrompt', props: bandProps(40) })
-    const first = await band.find({ key: 'pick:0' })
-    expect(first?.text).toContain('…')
-    expect(cellsOf(first?.text ?? '')).toBeLessThanOrEqual(40 - 10 + 2)
+    const key = await keyOf(band, 'エクスポート機能')
+    const cut = await band.find({ key })
+    expect(cut?.text).toContain('…')
+    expect(cellsOf(cut?.text ?? '')).toBeLessThanOrEqual(40 - 10 + 2)
+    // What was cut is not sent unread: the whole text goes to the prompt box.
+    await band.press({ key })
+    expect(filled).toEqual([LONG])
+    expect(submitted).toEqual([])
+  })
+
+  test('a choice the band shows whole is submitted', async ($, on) => {
+    const submitted: string[] = []
+    const filled: string[] = []
+    engine(on, submitted, [], filled)
+    await $.command.run(command('refresh'))
+    const band = await $.ui.mount({ plugin: 'next-compass', surface: 'terminal', component: 'AbovePrompt', props: bandProps(100) })
+    const key = await keyOf(band, 'Add tests for the parser')
+    expect((await band.find({ key }))?.text).not.toContain('…')
+    await band.press({ key })
+    expect(submitted).toEqual(['Add tests for the parser'])
+    expect(filled).toEqual([])
   })
 })

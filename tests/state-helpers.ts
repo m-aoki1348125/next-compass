@@ -11,8 +11,6 @@ import type { On, PluginState, RenderElement, RenderPropsOf } from 'claude-code'
 const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
 
 const REPLIES: Record<string, string> = {
-  'CHOICES-V': ['AXIS: 進める | 調べる', '1: Implement the export', '3: Investigate the flaky test'].join('\n'),
-  'CHOICES-H': ['AXIS: 広げる | 固める', '2: Refactor the parser', '4: Add tests for the parser'].join('\n'),
   CHOICES: [
     'AXES: 進める | 広げる | 調べる | 固める',
     '1: Implement the export',
@@ -20,24 +18,21 @@ const REPLIES: Record<string, string> = {
     '3: Investigate the flaky test',
     '4: Add tests for the parser',
   ].join('\n'),
-  'EXTRAS-A': ['0.4 0.4 Write the README section', '-0.4 -0.4 Clean up the module'].join('\n'),
-  'EXTRAS-B': ['-0.4 0.4 Profile the build'].join('\n'),
-  EXTRAS: ['- Write the README section', '- Profile the build'].join('\n'),
-  PLACE: ['1 0.4 0.4', '2 -0.4 0.4'].join('\n'),
+  EXTRAS: ['- Write the README section', '- Profile the build', '- Split the config file'].join('\n'),
   POOL: [
-    '0.1 0.8 Ship the export',
-    '0.7 0.2 Add CSV to the export',
-    '0.1 -0.7 Check the export by hand',
-    '-0.8 0.1 Add tests for the export',
-    '0.5 0.5 Document the export',
-    '-0.4 -0.4 Clean up the export module',
+    '- Ship the export',
+    '- Add CSV to the export',
+    '- Check the export by hand',
+    '- Add tests for the export',
+    '- Document the export',
+    '- Clean up the export module',
   ].join('\n'),
   SELECT: ['AXES: 進める | 広げる | 確かめる | 固める', '1: #1', '2: #2', '3: Ask which format matters', '4: #4'].join('\n'),
 }
 
-const MARKER = /\((CHOICES-V|CHOICES-H|CHOICES|EXTRAS-A|EXTRAS-B|EXTRAS|PLACE|POOL|SELECT)\)/
+const MARKER = /\((CHOICES|EXTRAS|POOL|SELECT|BLEND)\)/
 
-export type Marker = keyof typeof REPLIES | 'BLEND'
+export type Marker = 'CHOICES' | 'EXTRAS' | 'POOL' | 'SELECT' | 'BLEND'
 
 /**
  * How the model behaves: `fail` a marker with an empty reply or a thrown
@@ -49,11 +44,22 @@ export type Behavior = {
   delay?: Partial<Record<Marker, number>>
   blendTexts?: string[]
   blendDelays?: number[]
+  /** Replies that replace the canned ones, by marker. */
+  replies?: Partial<Record<Marker, string>>
+  /** False when the map pane cannot be placed (`ui.open` answers not placed). */
+  placed?: boolean
+  /** What `$.store` holds at the start. */
+  store?: Record<string, unknown>
+  /** Claude Code's own settings as `$.settings.read()` answers them. */
+  settings?: Record<string, unknown>
 }
 
 export const stand = (on: On, behavior: Behavior = {}) => {
   const clock = mock.clock(on, { now: 1_000_000 })
+  mock.store(on, behavior.store ?? {})
   const asked: Marker[] = []
+  const prompts: string[] = []
+  const models: string[] = []
   const submitted: string[] = []
   const filled: string[] = []
   const toasts: string[] = []
@@ -61,21 +67,25 @@ export const stand = (on: On, behavior: Behavior = {}) => {
     const marker = (MARKER.exec(e.prompt)?.[1] ?? 'BLEND') as Marker
     const blendIndex = asked.filter(m => m === 'BLEND').length
     asked.push(marker)
+    prompts.push(e.prompt)
+    models.push(e.model)
     const delay = marker === 'BLEND' ? behavior.blendDelays?.[blendIndex] : behavior.delay?.[marker]
     if (delay !== undefined) await clock.sleep(delay)
     const failure = behavior.fail?.[marker]
     if (failure === 'throw') throw new Error(`refused ${marker}`)
     if (failure === 'empty') return { value: { isAnswered: false as const, reason: 'empty-reply' as const, usage: USAGE } }
-    const text = marker === 'BLEND' ? (behavior.blendTexts?.[blendIndex] ?? 'Blend the two steps') : (REPLIES[marker] ?? '')
+    const text = marker === 'BLEND' ? (behavior.blendTexts?.[blendIndex] ?? 'Blend the two steps') : (behavior.replies?.[marker] ?? REPLIES[marker] ?? '')
     return { value: { isAnswered: true as const, text, usage: USAGE } }
   })
   on('session.messages', () => ({ value: [] }))
+  on('settings.read', () => ({ value: (behavior.settings ?? {}) as never }))
+  on('prompt.suggest', () => ({ isShown: true }))
   on('turn.start', (_$, e) => ({ turnId: e.turnId }))
   on('turn.complete', (_$, e) => ({ text: e.answer }))
   on('session.end', (_$, e) => ({ sessionId: e.sessionId }))
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
   on('command.register', (_$, e) => ({ value: { command: e.name } }))
-  on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  on('ui.open', () => ({ value: (behavior.placed === false ? { isPlaced: false } : { isPlaced: true }) as never }))
   on('ui.toast', (_$, e) => {
     toasts.push(e.text)
     return { value: undefined }
@@ -107,12 +117,17 @@ export const stand = (on: On, behavior: Behavior = {}) => {
     const set = state('set')
     return set === null ? null : set.items.filter(i => i.isPrimary).map(i => i.text)
   }
-  return { clock, asked, submitted, filled, toasts, count, state, four }
+  /** The extras of the set now: their texts, or null with no set. */
+  const extras = (): string[] | null => {
+    const set = state('set')
+    return set === null ? null : set.items.filter(i => !i.isPrimary).map(i => i.text)
+  }
+  return { clock, asked, prompts, models, submitted, filled, toasts, count, state, four, extras }
 }
 
 type Keys = keyof PluginState['next-compass'] & string
 
-/** The atoms' initial values, as register.tsx declares them. */
+/** The atoms' initial values, as state.ts declares them. */
 const INITIAL: { [K in Keys]: PluginState['next-compass'][K] } = {
   set: null,
   phase: 'idle',
@@ -124,7 +139,15 @@ const INITIAL: { [K in Keys]: PluginState['next-compass'][K] } = {
   ghost: null,
   faults: 0,
   activity: [],
+  preview: null,
 }
+
+/** The key of the pane's one Client, as register.tsx names it. */
+export const SPACE = 'space@2'
+
+/** A pick as the space posts it; `previewShownWhole` says whether the caption drew the preview in full (the Client decides). */
+export const pickAt = (pane: Pane, x: number, y: number, fill = false, previewShownWhole = true) =>
+  pane.post({ kind: 'pick', x, y, fill, previewShownWhole }, { in: SPACE })
 
 /** `/compass <args>` as the person runs it. */
 export const compass = ($: Engine, args: string) =>
@@ -170,3 +193,24 @@ export const mountPane = ($: Engine) =>
       view: {},
     } as unknown as RenderPropsOf['Pane'],
   })
+
+export type Pane = Awaited<ReturnType<typeof mountPane>>
+
+/** The extras that land with a turn's pool, as the POOL reply lists them. */
+export const POOL_TEXTS = [
+  'Ship the export',
+  'Add CSV to the export',
+  'Check the export by hand',
+  'Add tests for the export',
+  'Document the export',
+  'Clean up the export module',
+]
+
+/** A turn that prepares a pool (one tool call) and ends with an answer. */
+export const preparedTurn = async ($: Engine, engine: ReturnType<typeof stand>) => {
+  await startTurn($)
+  await $.tool.call({ tool: 'Read', file_path: '/a' })
+  await engine.clock.settle()
+  await endTurn($)
+  await engine.clock.settle()
+}

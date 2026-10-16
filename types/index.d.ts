@@ -11,7 +11,8 @@ export type CompassTimings = {
   contextMs: number
   choicesMs: number | null
   extrasMs: number | null
-  placeMs: number | null
+  /** Laying the candidates out on the map, done locally. */
+  layoutMs: number | null
   bandMs: number | null
   mapMs: number | null
   /** True when the four were picked from candidates prepared while Claude worked. */
@@ -19,8 +20,7 @@ export type CompassTimings = {
 }
 
 /**
- * One generation's display data: the four (shown first) and, once the
- * parallel extras call and the placing call land, the extras merged in.
+ * One generation's display data: the four (first, `isPrimary`) and the extras.
  */
 export type CompassSet = {
   id: number
@@ -33,6 +33,9 @@ export type CompassSet = {
 }
 
 export type CompassPoint = { x: number; y: number }
+
+/** An instruction written for a spot on the map, shown and waiting for a second pick there to be sent. */
+export type CompassPreview = { x: number; y: number; text: string }
 
 export type CompassPhase = 'idle' | 'thinking' | 'blending' | 'error'
 
@@ -53,6 +56,8 @@ declare module 'claude-code' {
       faults: number
       /** The tool names of the turn's latest calls, oldest first. */
       activity: string[]
+      /** The blended instruction shown under the map, sent by a second pick at its spot; null when none. */
+      preview: CompassPreview | null
     }
   }
 }

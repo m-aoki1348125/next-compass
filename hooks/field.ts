@@ -126,6 +126,8 @@ const costOf = (rows: readonly Run[][]): number =>
 /** Coarser and coarser colors until the rows fit the budget; then single cells are absorbed. */
 const ROUGHEST = 64
 const STEPS = [10, 20, 32, 48, ROUGHEST] as const
+/** The index into STEPS that fit last time; the first try next time. */
+let lastStep = 0
 
 /**
  * Turns rows of cells into rows of runs that fit a Client's tree: colors
@@ -135,8 +137,18 @@ const STEPS = [10, 20, 32, 48, ROUGHEST] as const
 export const fitRows = (rows: readonly (readonly Run[])[], budget = TREE_BUDGET): Run[][] => {
   const attempt = (step: number) =>
     rows.map(cells => toRuns(cells.map(c => ({ ...c, color: coarse(c.color, step), bg: coarse(c.bg, step) }))))
-  const fitted = STEPS.map(attempt).find(r => costOf(r) <= budget)
-  if (fitted !== undefined) return fitted
+  // The step that fit last frame is tried first, then one finer: two attempts a frame, not five.
+  const order = [lastStep, ...STEPS.map((_, i) => i).filter(i => i !== lastStep)].filter(i => STEPS[i] !== undefined)
+  for (const i of order) {
+    const step = STEPS[i]
+    if (step === undefined) continue
+    const fitted = attempt(step)
+    if (costOf(fitted) <= budget) {
+      const finer = i > 0 && i === lastStep ? attempt(STEPS[i - 1] ?? step) : null
+      lastStep = finer !== null && costOf(finer) <= budget ? i - 1 : i
+      return finer !== null && costOf(finer) <= budget ? finer : fitted
+    }
+  }
   const roughest = attempt(ROUGHEST)
   const once = roughest.map(absorb)
   if (costOf(once) <= budget) return once
@@ -148,15 +160,19 @@ export const fitRows = (rows: readonly (readonly Run[])[], budget = TREE_BUDGET)
 
 /** Cells a character takes on the terminal: two for a wide (CJK, fullwidth) one. */
 export const cellWidth = (char: string): number =>
-  /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]/.test(char) ? 2 : 1
+  /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]|[\u{20000}-\u{3fffd}]|\p{Extended_Pictographic}/u.test(char) ? 2 : 1
 
 /** The text cut to at most `cells` terminal cells, ending in "…" when cut. */
 export const cutToCells = (text: string, cells: number): string => {
   const chars = Array.from(text)
   if (chars.reduce((n, c) => n + cellWidth(c), 0) <= cells) return text
-  const kept = chars.reduce<{ out: string; used: number }>(
-    (acc, c) => (acc.used + cellWidth(c) <= cells - 1 ? { out: acc.out + c, used: acc.used + cellWidth(c) } : acc),
-    { out: '', used: 0 },
+  // Stops at the first glyph that does not fit, so the cut is the text's head and nothing from after the gap.
+  const kept = chars.reduce<{ out: string; used: number; isFull: boolean }>(
+    (acc, c) =>
+      acc.isFull || acc.used + cellWidth(c) > cells - 1
+        ? { ...acc, isFull: true }
+        : { out: acc.out + c, used: acc.used + cellWidth(c), isFull: false },
+    { out: '', used: 0, isFull: false },
   )
   return `${kept.out}…`
 }

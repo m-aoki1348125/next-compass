@@ -1,7 +1,7 @@
 import type { ClientModule, ClientSurface, RenderElement } from 'claude-code'
 
 import type { CompassChoice } from '../types'
-import { blend, fitRows, fluxCell, mapCell } from './field'
+import { blend, cutToCells, fitRows, fluxCell, mapCell } from './field'
 import type { Cell as FieldCell, Run } from './field'
 import { lightsOf, lit, rainbow } from './flux'
 import { MOVES, caption, center, cursorOf, placeItems, paint, sameCell, toCell, toPoint } from './map'
@@ -26,6 +26,8 @@ export type SpaceProps = {
   isBusy: boolean
   /** A pointer the plugin moves (the demo); null when none. */
   ghost: { x: number; y: number } | null
+  /** The instruction written for a spot, shown under the map until a second pick there sends it. */
+  preview: { x: number; y: number; text: string } | null
 }
 
 type Mode = 'flux' | 'map'
@@ -53,7 +55,8 @@ const TICK_MS = 120
 /** Ticks the melt between the free field and the map takes. */
 const MELT_TICKS = 9
 const WORK_SPEED = 0.08
-const MAP_SPEED = 0.024
+/** A settled map is still: its colors mean positions, which do not move. */
+const MAP_SPEED = 0
 const IDLE_SPEED = 0.02
 /** Rows under the grid: the label while Claude works, the blend under the pointer once the four are in. */
 const CAPTION_ROWS = 2
@@ -78,6 +81,7 @@ const isChoice = (v: unknown): v is CompassChoice => {
 const readProps = (raw: unknown): SpaceProps => {
   const o = (raw ?? {}) as Record<string, unknown>
   const ghost = (o.ghost ?? null) as Record<string, unknown> | null
+  const preview = (o.preview ?? null) as Record<string, unknown> | null
   return {
     gems: Array.isArray(o.gems) ? o.gems.filter((g): g is number => typeof g === 'number') : [],
     label: typeof o.label === 'string' ? o.label : '',
@@ -86,6 +90,10 @@ const readProps = (raw: unknown): SpaceProps => {
     labels: Array.isArray(o.labels) ? o.labels.map(l => (typeof l === 'string' ? l : '')) : [],
     isBusy: o.isBusy === true,
     ghost: ghost !== null && typeof ghost.x === 'number' && typeof ghost.y === 'number' ? { x: ghost.x, y: ghost.y } : null,
+    preview:
+      preview !== null && typeof preview.x === 'number' && typeof preview.y === 'number' && typeof preview.text === 'string'
+        ? { x: preview.x, y: preview.y, text: preview.text }
+        : null,
   }
 }
 
@@ -108,7 +116,7 @@ const listen = (surface: ClientSurface<SpaceState>): void => {
     if (e.type === 'down' && e.button === 'left') {
       surface.setState({ ...s, cursor: cell, hover: cell })
       const p = toPoint(cell, surface.columns, rows)
-      surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true })
+      surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true, previewShownWhole, isOnPreview: sameCell(previewCell, cell), previewText })
     }
   })
   surface.onKey(e => {
@@ -127,13 +135,35 @@ const listen = (surface: ClientSurface<SpaceState>): void => {
     }
     if (e.key === 'return') {
       const p = toPoint(from, surface.columns, rows)
-      return surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true })
+      return surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true, previewShownWhole, isOnPreview: sameCell(previewCell, from), previewText })
     }
     if (/^[1-4]$/.test(e.key)) surface.post({ kind: 'choose', index: Number(e.key) - 1, fill: e.shift === true })
   })
 }
 
+/** Whether the clock's ticks advance the field: false while the map is still, so nothing is recomputed. */
+let isTicking = true
+
+/** The preview as last drawn (its cell and text), so a pick says whether it landed on it; null when none is shown. */
+let previewCell: Cell | null = null
+let previewText: string | null = null
+
+/**
+ * Whether the last render drew the preview whole: a pick that sends it says so,
+ * and a preview the caption had to cut goes to the prompt box instead.
+ */
+let previewShownWhole = false
+
+/**
+ * The clock runs while the field moves (the free field, a melt); a settled map
+ * is still, so nothing is computed until a key, a pointer or new props arrive.
+ */
+const tick = (wants: boolean): void => {
+  isTicking = wants
+}
+
 const start = (surface: ClientSurface<SpaceState>, mode: Mode, speed: number): void => {
+  isTicking = true
   // Mounted straight into the map (no flux before it), the map shows whole at once.
   surface.setState({
     frame: 0,
@@ -147,9 +177,10 @@ const start = (surface: ClientSurface<SpaceState>, mode: Mode, speed: number): v
     lastItems: [],
     lastLabels: [],
   })
+  // Started once, as the surface asks; a still map skips the frame rather than stopping the clock.
   surface.every(TICK_MS, () => {
     const s = surface.state
-    if (s !== undefined) surface.setState({ ...s, frame: s.frame + 1, t: s.t + s.speed })
+    if (s !== undefined && isTicking) surface.setState({ ...s, frame: s.frame + 1, t: s.t + s.speed })
   })
   listen(surface)
 }
@@ -188,8 +219,11 @@ const drawGrid = ({ props, view, melt, columns, rows }: Scene): Run[][] => {
   const targets = props.items.filter(i => i.isPrimary).map(i => toCell(i.x, i.y, columns, rows))
   const lights = melt < 1 ? lightsOf(props.gems, view.t, view.frame, columns, rows, { targets, pull: melt }) : []
   const ghost = props.ghost === null ? null : toCell(props.ghost.x, props.ghost.y, columns, rows)
+  const previewAt = props.preview === null ? null : toCell(props.preview.x, props.preview.y, columns, rows)
+  // A cursor moved away from the preview is the pointer again; the preview's spot keeps its mark otherwise.
+  const own = melt >= CHIPS_AT ? cursorOf(view, columns, rows) : null
   const pointer: MapState = {
-    cursor: ghost ?? (melt >= CHIPS_AT ? cursorOf(view, columns, rows) : null),
+    cursor: ghost ?? (view.cursor !== null && !sameCell(view.cursor, previewAt) ? own : (previewAt ?? own)),
     hover: ghost === null && melt >= CHIPS_AT ? view.hover : null,
     frame: view.frame,
   }
@@ -251,6 +285,8 @@ const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): Rende
     surface.setState(view)
   }
   const melt = meltOf(view)
+  const isStill = mode === 'map' && melt >= 1
+  tick(!isStill)
   const rows = gridRows(surface)
   const { columns } = surface
   if (columns < 12 || rows < 3) return <Text dimColor>{props.label}</Text>
@@ -259,7 +295,18 @@ const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): Rende
   const lines = fitRows(drawGrid({ props: drawn, view, melt, columns, rows }))
   const cap = melt >= 0.5 && mode === 'map' ? caption({ ...props }, { cursor: view.cursor, hover: view.hover, frame: view.frame }, columns, rows) : null
   const focus = props.ghost === null ? null : caption({ ...props }, { cursor: toCell(props.ghost.x, props.ghost.y, columns, rows), hover: null, frame: view.frame }, columns, rows)
-  const shown = focus ?? cap
+  // A written instruction shows whole, over the shares at its spot, until a second pick there sends it.
+  const atPreview = props.preview === null ? null : toCell(props.preview.x, props.preview.y, columns, rows)
+  const movedAway = view.cursor !== null && !sameCell(view.cursor, atPreview)
+  const previewed =
+    atPreview === null || mode !== 'map' || movedAway || (view.hover !== null && !sameCell(view.hover, atPreview))
+      ? null
+      : { ...caption({ ...props }, { cursor: atPreview, hover: null, frame: view.frame }, columns, rows), text: props.preview?.text ?? '' }
+  // What the pick may send is only a preview drawn now, whole: "▶ " takes two cells before the text.
+  previewCell = previewed === null ? null : atPreview
+  previewText = previewed === null ? null : (props.preview?.text ?? null)
+  previewShownWhole = previewed !== null && props.preview !== null && cutToCells(props.preview.text, columns - 2) === props.preview.text
+  const shown = focus ?? previewed ?? cap
 
   return (
     <Box flexDirection="column">

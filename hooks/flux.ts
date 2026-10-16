@@ -1,20 +1,13 @@
-import type { ClientModule, ClientSurface, RenderElement } from 'claude-code'
-
 import { PALETTE, lighten } from './compass'
-import { blend, fitRows, fluxCell } from './field'
+import { blend } from './field'
 import type { Run } from './field'
 
 /**
- * `gems`: one light per recent tool call, its palette color by the kind of
- * work (edit, command, read, other); `label`: the line under the field;
- * `isWorking`: fast while a turn runs, slow while the session waits.
+ * The lights the space draws while Claude works: one gem per recent tool
+ * call, its palette color by the kind of work, drifting in the field with a
+ * fading trail; and the rainbow label, as ultrathink is drawn.
  */
-export type FluxProps = { gems: number[]; label: string; isWorking: boolean }
 
-type FluxState = { frame: number }
-
-const FRAME_MS = 180
-const MAX_GEMS = 6
 const HALO = 2.6
 const TRAIL = 4
 
@@ -80,12 +73,6 @@ export const lit = (col: number, row: number, base: Run, lights: readonly Light[
   }
 }
 
-/** One row's cells; `fitRows` turns the rows into runs that fit the tree. */
-const drawRow = (row: number, t: number, columns: number, rows: number, lights: readonly Light[]): Run[] =>
-  Array.from({ length: columns }, (_, col) =>
-    lit(col, row, { ...fluxCell((col / columns) * 2 - 1, (row / rows) * 2 - 1, t), bold: false }, lights),
-  )
-
 /** A hue (degrees) at full-ish saturation as hex, for the rainbow label. */
 const hue = (deg: number, light: number): string => {
   const h = ((deg % 360) + 360) % 360
@@ -110,62 +97,3 @@ export const rainbow = (label: string, frame: number) => {
     return { char, color: hue(i * 14 - frame * 18, 0.66 + shine * 0.24), bold: shine > 0.3 }
   })
 }
-
-const start = (surface: ClientSurface<FluxState>): void => {
-  surface.setState({ frame: 0 })
-  surface.every(FRAME_MS, () => surface.setState({ frame: (surface.state?.frame ?? 0) + 1 }))
-}
-
-/**
- * The props as they came, read defensively: an instance can be handed props
- * of an older shape across a hot reload, and a throw would unmount it.
- */
-const readProps = (raw: unknown): FluxProps => {
-  const obj = (raw ?? {}) as Record<string, unknown>
-  return {
-    gems: Array.isArray(obj.gems) ? obj.gems.filter((g): g is number => typeof g === 'number') : [],
-    label: typeof obj.label === 'string' ? obj.label : '',
-    isWorking: obj.isWorking === true,
-  }
-}
-
-const Flux: ClientModule<FluxProps, FluxState> = (raw, surface): RenderElement => {
-  const props = readProps(raw)
-  const { Box, Text } = surface.elements
-  if (surface.state === undefined) start(surface)
-  const frame = surface.state?.frame ?? 0
-  const t = frame * (props.isWorking ? 0.12 : 0.03)
-  const rows = Math.max(1, surface.rows - 1)
-  const { columns } = surface
-  if (columns < 8) return <Text dimColor>{props.label}</Text>
-  const lights = lightsOf(props.gems.slice(-MAX_GEMS), t, frame, columns, rows)
-  const lines = fitRows(Array.from({ length: rows }, (_, row) => drawRow(row, t, columns, rows, lights)))
-  return (
-    <Box flexDirection="column">
-      {lines.map(runs => (
-        <Text>
-          {runs.map(r => (
-            <Text color={r.color} backgroundColor={r.bg} {...(r.bold ? { bold: true } : {})}>
-              {r.text}
-            </Text>
-          ))}
-        </Text>
-      ))}
-      {props.isWorking ? (
-        <Text wrap="truncate-end">
-          {rainbow(props.label, frame).map(c => (
-            <Text color={c.color} bold={c.bold}>
-              {c.char}
-            </Text>
-          ))}
-        </Text>
-      ) : (
-        <Text dimColor wrap="truncate-end">
-          {props.label}
-        </Text>
-      )}
-    </Box>
-  )
-}
-
-export default Flux

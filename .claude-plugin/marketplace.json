@@ -1,0 +1,15 @@
+{
+  "name": "next-compass",
+  "description": "next-compass: predicted next instructions in four directions, and a meaning map to send the in-between",
+  "owner": {
+    "name": "m-aoki",
+    "url": "https://github.com/m-aoki1348125"
+  },
+  "plugins": [
+    {
+      "name": "next-compass",
+      "source": "./",
+      "description": "Four predicted next instructions above the prompt (1-4 to send) and a meaning map for the in-between (English / Japanese)"
+    }
+  ]
+}

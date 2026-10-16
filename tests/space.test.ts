@@ -7,15 +7,21 @@ import type { On, RenderElement, RenderNode, RenderPropsOf } from 'claude-code'
  * when the four land, in the same Client instance, and back on a new prompt.
  */
 
-const SPACE = 'space@1'
+const SPACE = 'space@2'
 const TICK_MS = 120
 const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
 
-const PAIR_V = ['AXIS: 進める | 調べる', '1: Implement the export feature', '3: Investigate the flaky test'].join('\n')
-const PAIR_H = ['AXIS: 広げる | 固める', '2: Refactor the parser module', '4: Add tests for the parser'].join('\n')
-/** Three self-placed extras, apart from each other and from the four. */
-const EXTRAS_A = ['0.45 0.45 Write the README section', '-0.45 -0.45 Profile the build'].join('\n')
-const EXTRAS_B = ['-0.45 0.45 Split the config file'].join('\n')
+const CHOICES = [
+  'AXES: 進める | 広げる | 調べる | 固める',
+  '1: Implement the export feature',
+  '2: Refactor the parser module',
+  '3: Investigate the flaky test',
+  '4: Add tests for the parser',
+].join('\n')
+/** Three extras, as texts: the map lays them out itself. */
+const EXTRAS = ['- Write the README section', '- Profile the build', '- Split the config file'].join('\n')
+/** Japanese UI, so the strings the tests read are the ones the person reads. */
+const JA = { options: { language: 'ja' } }
 
 const command = (args: string) => ({
   command: 'compass',
@@ -34,10 +40,8 @@ const PANE_PROPS = {
 } as unknown as RenderPropsOf['Pane']
 
 const replyFor = (prompt: string): string => {
-  if (prompt.includes('(CHOICES-V)')) return PAIR_V
-  if (prompt.includes('(CHOICES-H)')) return PAIR_H
-  if (prompt.includes('(EXTRAS-A)')) return EXTRAS_A
-  if (prompt.includes('(EXTRAS-B)')) return EXTRAS_B
+  if (prompt.includes('(CHOICES)')) return CHOICES
+  if (prompt.includes('(EXTRAS)')) return EXTRAS
   return ''
 }
 
@@ -46,6 +50,7 @@ const engineBeneath = (on: On) => {
   const submitted: string[] = []
   const filled: string[] = []
   const clock = mock.clock(on, { now: 1_000_000 })
+  mock.store(on)
   on('model.complete', (_$, e) => ({ value: { isAnswered: true as const, text: replyFor(e.prompt), usage: USAGE } }))
   on('session.messages', () => ({ value: [] }))
   on('turn.start', (_$, e) => ({ turnId: e.turnId }))
@@ -94,7 +99,10 @@ const rowsOf = async (pane: Pane): Promise<string[]> => {
   return ('children' in root ? (root.children ?? []) : []).map(textOf)
 }
 
-const CHIPS = [' 1 進める', ' 2 広げる', ' 3 調べる', ' 4 固める']
+/** The four names; which number each takes depends on where its text landed. */
+const NAMES = ['進める', '広げる', '調べる', '固める']
+const hasChips = (grid: string): boolean => NAMES.every(n => new RegExp(` [1-4] ${n}`).test(grid))
+const anyChip = (grid: string): boolean => NAMES.some(n => new RegExp(` [1-4] ${n}`).test(grid))
 const count = (text: string, char: string): number => Array.from(text).filter(c => c === char).length
 
 /** Claude at work in a pane already showing the space: a prompt and two tool calls, so two gems drift. */
@@ -119,16 +127,16 @@ describe('one space from the free field to the map', () => {
     await pane.redraw()
     expect(await pane.find({ key: SPACE })).toBeDefined()
     const start = await grid()
-    for (const chip of CHIPS) expect(start).not.toContain(chip)
+    expect(anyChip(start)).toBe(false)
 
     await pane.advance(3 * TICK_MS)
     const third = await grid()
-    for (const chip of CHIPS) expect(third).not.toContain(chip)
+    expect(anyChip(third)).toBe(false)
 
     await pane.advance(6 * TICK_MS)
     expect(await pane.find({ key: SPACE })).toBeDefined()
     const settled = await grid()
-    for (const chip of CHIPS) expect(settled).toContain(chip)
+    expect(hasChips(settled)).toBe(true)
     expect(settled).not.toMatch(/[✧❖]/)
     expect(count(settled, '✦')).toBe(3)
   })
@@ -149,24 +157,24 @@ describe('one space from the free field to the map', () => {
     await pane.advance(3 * TICK_MS)
     const third = await grid()
     expect(count(third, '✦')).toBe(3)
-    for (const chip of CHIPS) expect(third).not.toContain(chip)
+    expect(anyChip(third)).toBe(false)
 
     await pane.advance(6 * TICK_MS)
-    for (const chip of CHIPS) expect(await grid()).toContain(chip)
+    expect(hasChips(await grid())).toBe(true)
   })
 
-  test('a new prompt melts back: the chips go and the caption shows Claude at work', async ($, on) => {
+  test('a new prompt melts back: the chips go and the caption shows Claude at work', JA, async ($, on) => {
     const { pane, grid } = await working($, on)
     await $.command.run(command('refresh'))
     await pane.redraw()
     await pane.advance(10 * TICK_MS)
-    for (const chip of CHIPS) expect(await grid()).toContain(chip)
+    expect(hasChips(await grid())).toBe(true)
 
     await $.turn.start({ text: 'next step', turnId: 't1' })
     await pane.redraw()
     await pane.advance(10 * TICK_MS)
     const back = await grid()
-    for (const chip of CHIPS) expect(back).not.toContain(chip)
+    expect(anyChip(back)).toBe(false)
     const caption = (await rowsOf(pane)).slice(16).join('\n')
     expect(caption).toContain('Claude が作業中です')
   })
@@ -180,6 +188,30 @@ describe('one space from the free field to the map', () => {
     await pane.pointer({ type: 'down', x: 40, y: 10, button: 'left' })
     expect(engine.filled).toEqual([])
     expect(engine.submitted).toEqual([])
+  })
+})
+
+describe('flux while Claude works', () => {
+  test('the empty pane moves, and each tool call drifts in as a gem, never as text', JA, async ($, on) => {
+    engineBeneath(on)
+    const ui = await mountPane($)
+    await ui.resize({ columns: 48, rows: 14, in: SPACE })
+    expect(await ui.find({ in: SPACE, text: /返答が終わると/ })).toBeDefined()
+
+    await $.turn.start({ text: 'fix the parser', turnId: 't1' })
+    await $.tool.call({ tool: 'Read', file_path: '/work/app/register.tsx' })
+    await ui.redraw()
+    expect(await ui.find({ in: SPACE, text: /作業中/ })).toBeDefined()
+    const label = (await ui.findAll({ in: SPACE, type: 'Text' })).filter(t => t.text.length === 1 && '作業中'.includes(t.text))
+    expect(label.length).toBeGreaterThanOrEqual(3)
+    const before = await rowsOf(ui)
+    expect(before.join('\n')).not.toContain('register.tsx')
+    expect(before.slice(0, 12).join('\n')).toMatch(/[✦✧❖]/)
+
+    await ui.advance(700)
+    const after = await rowsOf(ui)
+    expect(after.slice(0, 12)).not.toEqual(before.slice(0, 12))
+    expect(after.slice(0, 12).every(r => cellsOf(r) === 48)).toBe(true)
   })
 })
 
@@ -203,7 +235,7 @@ describe('big spaces stay drawn', () => {
       expect(JSON.stringify(map).length).toBeLessThan(LIMIT)
       const rows = (await rowsOf(pane)).slice(0, size.rows - 2)
       expect(rows.map(cellsOf)).toEqual(Array(size.rows - 2).fill(columns))
-      for (const chip of CHIPS) expect(rows.join('\n')).toContain(chip)
+      expect(hasChips(rows.join('\n'))).toBe(true)
     })
   }
 })

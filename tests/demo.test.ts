@@ -29,6 +29,9 @@ const PANE_PROPS = {
   view: {},
 } as unknown as RenderPropsOf['Pane']
 
+/** Japanese UI: the demo's texts and toasts are read as the person reads them. */
+const JA = { options: { language: 'ja' } }
+
 const MAP = { columns: 56, rows: 18 }
 /** The map's grid rows: the region less the blend bar and the caption. */
 const GRID_ROWS = MAP.rows - 2
@@ -39,6 +42,7 @@ const engineBeneath = (on: On) => {
   const submitted: string[] = []
   const toasts: string[] = []
   const clock = mock.clock(on, { now: 1_000_000 })
+  mock.store(on)
   on('model.complete', (_$, e) => {
     asked.push(e.prompt)
     return { value: { isAnswered: true as const, text: '', usage: USAGE } }
@@ -78,7 +82,7 @@ const mountBand = ($: Engine) =>
   $.ui.mount({ plugin: 'next-compass', surface: 'terminal', component: 'AbovePrompt', props: BAND })
 
 /** The pane's one Client: the free field while Claude works, the map once the four are in. */
-const SPACE = 'space@1'
+const SPACE = 'space@2'
 
 /** The space's frame clock time the melt from the free field to the map takes, with room to spare. */
 const MELT_MS = 1200
@@ -96,7 +100,7 @@ const gems = (rows: readonly string[]): number => Array.from(rows.join('')).filt
 const pointerRow = (rows: readonly string[]): number => rows.findIndex(r => r.includes('◎'))
 
 describe('demo mode', () => {
-  test('plays from Claude working to four picked from the space, calling no model and sending nothing', async ($, on) => {
+  test('plays from Claude working to four picked from the space, calling no model and sending nothing', JA, async ($, on) => {
     const engine = engineBeneath(on)
     await $.command.run(DEMO)
     const pane = await mountPane($)
@@ -150,7 +154,7 @@ describe('demo mode', () => {
     expect(engine.submitted).toEqual([])
   })
 
-  test('a prompt stops the demo: its later frames do not fill the band again', async ($, on) => {
+  test('a prompt stops the demo: its later frames do not fill the band again', JA, async ($, on) => {
     const engine = engineBeneath(on)
     await $.command.run(DEMO)
     await engine.clock.advance(5500)

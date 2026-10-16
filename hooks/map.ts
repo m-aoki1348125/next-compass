@@ -1,17 +1,14 @@
-import type { ClientModule, ClientSurface, RenderElement } from 'claude-code'
-
 import type { CompassChoice } from '../types'
-import { colorOf, lighten, weightsAt } from './compass'
-import { fitRows, mapCell } from './field'
-import type { Run } from './field'
+import { colorOf, lighten, sharesAt } from './compass'
 
-/** `labels`: the four directions' names, drawn beside their choices on the map. */
+/**
+ * The map's layout helpers, shared by the space: where items sit in cells, the chips
+ * and extras laid without overlap, the cell painter and the caption.
+ * `labels`: the four directions' names, drawn beside their choices on the map.
+ */
 export type MapProps = {
   items: CompassChoice[]
   labels: string[]
-  isBusy: boolean
-  /** A pointer the plugin moves (the demo), drawn and read as the cursor; null when none. */
-  ghost: { x: number; y: number } | null
 }
 
 export type Cell = { col: number; row: number }
@@ -22,18 +19,11 @@ export type MapState = { cursor: Cell | null; hover: Cell | null; frame: number 
 /** The keyboard cursor: where it was put, else the middle of the grid as laid out now. */
 export const cursorOf = (state: MapState, columns: number, rows: number): Cell => state.cursor ?? center(columns, rows)
 
-const FRAME_MS = 250
-const SPEED = 0.05
-
 type Glyph = { char: string; color: string; bg?: string; bold?: boolean }
 
 type Painted = Glyph & { bg: string }
 
-/** Rows under the grid: the blend bar and the nearest candidate's text. */
-const CAPTION_ROWS = 2
 const BAR_WIDTH = 16
-
-const gridRows = (surface: ClientSurface<MapState>): number => Math.max(1, surface.rows - CAPTION_ROWS)
 
 export const toPoint = (cell: Cell, columns: number, rows: number) => ({
   x: ((cell.col + 0.5) / Math.max(1, columns)) * 2 - 1,
@@ -65,7 +55,7 @@ const chipGlyphs = (index: number, label: string, color: string): Glyph[] => [
 ]
 
 /** Cells a glyph takes: two for a wide (CJK, fullwidth) character. */
-const widthOf = (char: string): number => (/[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]/.test(char) ? 2 : 1)
+const widthOf = (char: string): number => (/[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]|[\u{20000}-\u{3fffd}]|\p{Extended_Pictographic}/u.test(char) ? 2 : 1)
 
 /** Cells the number part of a chip (" N ") takes. */
 const CHIP_HEAD = 3
@@ -163,52 +153,6 @@ export const MOVES: Record<string, Cell> = {
   right: { col: 2, row: 0 },
 }
 
-const listen = (surface: ClientSurface<MapState>): void => {
-  const current = (): MapState =>
-    surface.state ?? { cursor: null, hover: null, frame: 0 }
-  surface.setState(current())
-  surface.every(FRAME_MS, () => {
-    const state = current()
-    surface.setState({ ...state, frame: state.frame + 1 })
-  })
-  surface.onPointer(e => {
-    const cell = { col: e.x, row: e.y }
-    const inside = e.x >= 0 && e.y >= 0 && e.x < surface.columns && e.y < gridRows(surface)
-    const state = current()
-    if (e.type === 'leave' || !inside) {
-      return state.hover === null ? undefined : surface.setState({ ...state, hover: null })
-    }
-    if (e.type === 'move' && !sameCell(state.hover, cell)) {
-      return surface.setState({ ...state, hover: cell })
-    }
-    if (e.type === 'down' && e.button === 'left') {
-      surface.setState({ ...state, cursor: cell, hover: cell })
-      const p = toPoint(cell, surface.columns, gridRows(surface))
-      surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true })
-    }
-  })
-  surface.onKey(e => {
-    const state = current()
-    const move = MOVES[e.key]
-    if (move !== undefined) {
-      const step = e.shift ? 3 : 1
-      const from = cursorOf(state, surface.columns, gridRows(surface))
-      const cursor = {
-        col: Math.min(surface.columns - 1, Math.max(0, from.col + move.col * step)),
-        row: Math.min(gridRows(surface) - 1, Math.max(0, from.row + move.row * step)),
-      }
-      return surface.setState({ ...state, cursor })
-    }
-    if (e.key === 'return') {
-      const p = toPoint(cursorOf(state, surface.columns, gridRows(surface)), surface.columns, gridRows(surface))
-      return surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true })
-    }
-    if (/^[1-4]$/.test(e.key)) {
-      surface.post({ kind: 'choose', index: Number(e.key) - 1, fill: e.shift === true })
-    }
-  })
-}
-
 /** A cell of the map: the field beneath, and over it a chip, an extra, the cursor or the pointer. */
 export const paint = (cell: Cell, ground: { text: string; color: string; bg: string }, placed: Grid, state: MapState): Painted => {
   const { bg } = ground
@@ -224,27 +168,13 @@ export const paint = (cell: Cell, ground: { text: string; color: string; bg: str
   return { char: ground.text, color: ground.color, bg }
 }
 
-/** One grid row's cells; the cell a wide glyph covers is dropped. `fitRows` makes the runs. */
-const drawRow = (row: number, props: MapProps, state: MapState, placed: Grid, columns: number, rows: number): Run[] => {
-  const t = state.frame * SPEED
-  const painted = Array.from({ length: columns }, (_, col) => {
-    const cell = { col, row }
-    const p = toPoint(cell, columns, rows)
-    return paint(cell, mapCell(p.x, p.y, t, props.items), placed, state)
-  })
-  return painted
-    .filter(g => g.char !== '')
-    .map(g => ({ text: g.char, color: g.color, bg: g.bg, bold: g.bold === true }))
-}
-
-/** The blend under the hover or cursor: a bar of the top three colors, their shares, the nearest text. */
+/** The blend under the hover or cursor: a bar of the top colors, the shares the blend will use, the nearest text. */
 export const caption = (props: MapProps, state: MapState, columns: number, rows: number) => {
   const p = toPoint(state.hover ?? cursorOf(state, columns, rows), columns, rows)
-  const top = weightsAt(p, props.items).slice(0, 3)
-  const total = top.reduce((sum, w) => sum + w.weight, 0)
+  const top = sharesAt(p, props.items)
   const barWidth = Math.min(BAR_WIDTH, Math.max(6, columns - 26))
   const bar = top.map(w => ({
-    width: Math.round((w.weight / Math.max(total, 1e-9)) * barWidth),
+    width: Math.round(w.weight * barWidth),
     color: colorOf(props.items, w.index),
   }))
   const label = (index: number) => (props.items[index]?.isPrimary ? `${index + 1}` : '✦')
@@ -260,80 +190,3 @@ export const caption = (props: MapProps, state: MapState, columns: number, rows:
     color: first === undefined ? '#ffffff' : lighten(colorOf(props.items, first.index), 0.2),
   }
 }
-
-const isChoice = (v: unknown): v is CompassChoice => {
-  const o = (v ?? {}) as Record<string, unknown>
-  return typeof o.text === 'string' && typeof o.x === 'number' && typeof o.y === 'number' && typeof o.isPrimary === 'boolean'
-}
-
-/**
- * The props as they came, read defensively: an instance can be handed props
- * of an older shape across a hot reload, and a throw would unmount it.
- */
-const isPoint = (v: unknown): v is { x: number; y: number } => {
-  const o = (v ?? {}) as Record<string, unknown>
-  return typeof o.x === 'number' && typeof o.y === 'number'
-}
-
-const readProps = (raw: unknown): MapProps => {
-  const obj = (raw ?? {}) as Record<string, unknown>
-  return {
-    items: Array.isArray(obj.items) ? obj.items.filter(isChoice) : [],
-    labels: Array.isArray(obj.labels) ? obj.labels.map(l => (typeof l === 'string' ? l : '')) : [],
-    isBusy: obj.isBusy === true,
-    ghost: isPoint(obj.ghost) ? obj.ghost : null,
-  }
-}
-
-const CompassMap: ClientModule<MapProps, MapState> = (raw, surface): RenderElement => {
-  const props = readProps(raw)
-  const { Box, Text } = surface.elements
-  if (surface.state === undefined) {
-    listen(surface)
-  }
-  const rows = gridRows(surface)
-  const { columns } = surface
-  const stored = surface.state ?? { cursor: null, hover: null, frame: 0 }
-  const ghost = props.ghost === null ? null : toCell(props.ghost.x, props.ghost.y, columns, rows)
-  const state = ghost === null ? { ...stored, cursor: cursorOf(stored, columns, rows) } : { ...stored, cursor: ghost, hover: null }
-  if (columns < 12 || rows < 5 || props.items.length === 0) {
-    return <Text dimColor>{props.isBusy ? '候補を考えています…' : '候補はまだありません。'}</Text>
-  }
-  const placed = placeItems(props, columns, rows)
-  const lines = fitRows(Array.from({ length: rows }, (_, row) => drawRow(row, props, state, placed, columns, rows)))
-  const cap = caption(props, state, columns, rows)
-
-  return (
-    <Box flexDirection="column">
-      {lines.map(runs => (
-        <Text>
-          {runs.map(r => (
-            <Text color={r.color} backgroundColor={r.bg} {...(r.bold ? { bold: true } : {})}>
-              {r.text}
-            </Text>
-          ))}
-        </Text>
-      ))}
-      <Text wrap="truncate-end">
-        {cap.bar.map(seg => (
-          <Text backgroundColor={seg.color}>{' '.repeat(seg.width)}</Text>
-        ))}
-        <Text> </Text>
-        {cap.shares.map((s, i) => (
-          <Text color={s.color} bold>
-            {i > 0 ? ' · ' : ''}
-            {s.text}
-          </Text>
-        ))}
-      </Text>
-      <Text wrap="truncate-end">
-        <Text color={cap.color} bold>
-          {'▶ '}
-        </Text>
-        {cap.text}
-      </Text>
-    </Box>
-  )
-}
-
-export default CompassMap

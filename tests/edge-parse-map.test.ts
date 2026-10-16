@@ -55,8 +55,13 @@ const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, c
 const LONG_V = '進'.repeat(16)
 const LONG_H = '広'.repeat(16)
 
-const PAIR_V = [`AXIS: ${LONG_V} | ${'調'.repeat(16)}`, '1: Implement the export feature', '3: Investigate the flaky test'].join('\n')
-const PAIR_H = [`AXIS: ${LONG_H} | ${'固'.repeat(16)}`, '2: Refactor the parser module', '4: Add tests for the parser'].join('\n')
+const CHOICES = [
+  `AXES: ${LONG_V} | ${LONG_H} | ${'調'.repeat(16)} | ${'固'.repeat(16)}`,
+  '1: Implement the export feature',
+  '2: Refactor the parser module',
+  '3: Investigate the flaky test',
+  '4: Add tests for the parser',
+].join('\n')
 
 const COMMAND = {
   command: 'compass',
@@ -75,8 +80,9 @@ const PANE_PROPS = {
 
 const engineBeneath = (on: On) => {
   mock.clock(on, { now: 1_000_000 })
+  mock.store(on)
   on('model.complete', (_$, e) => {
-    const text = e.prompt.includes('(CHOICES-V)') ? PAIR_V : e.prompt.includes('(CHOICES-H)') ? PAIR_H : 'none'
+    const text = e.prompt.includes('(CHOICES)') ? CHOICES : 'none'
     return { value: { isAnswered: true as const, text, usage: USAGE } }
   })
   on('session.messages', () => ({ value: [] }))
@@ -113,8 +119,8 @@ describe('chips on a narrow map', () => {
       await $.command.run({ ...COMMAND, args: 'map' })
       await $.command.run({ ...COMMAND, args: 'refresh' })
       const ui = await mountMap($)
-      await ui.resize({ ...size, in: 'space@1' })
-      const root = await ui.drawn({ in: 'space@1' })
+      await ui.resize({ ...size, in: 'space@2' })
+      const root = await ui.drawn({ in: 'space@2' })
       const rows = ('children' in root ? (root.children ?? []) : []).map(textOf).slice(0, size.rows - 2)
       expect(rows).toHaveLength(size.rows - 2)
       expect(rows.map(cellsOf)).toEqual(rows.map(() => size.columns))

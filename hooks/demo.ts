@@ -1,5 +1,5 @@
 import type { CompassAxes, CompassChoice, CompassSet } from '../types'
-import { ANCHORS, PRIMARY_COUNT, weightsAt } from './compass'
+import { PRIMARY_COUNT, sharesAt } from './compass'
 import type { Point } from './compass'
 
 /**
@@ -8,6 +8,14 @@ import type { Point } from './compass'
  * and settle into their directions, then a pointer glides between two to show
  * what an in-between pick would send. Pure data: register.tsx plays it.
  */
+
+/** Where the four settle in the demo: the compass points. */
+const ANCHORS: readonly Point[] = [
+  { x: 0, y: 0.8 },
+  { x: 0.8, y: 0 },
+  { x: 0, y: -0.8 },
+  { x: -0.8, y: 0 },
+]
 
 const AXES: CompassAxes = { up: '仕上げる', right: '広げる', down: '確かめる', left: '固める' }
 
@@ -59,7 +67,7 @@ const demoSet = (picked: number, settle: number): CompassSet => {
       contextMs: 0,
       choicesMs: null,
       extrasMs: null,
-      placeMs: null,
+      layoutMs: null,
       bandMs: null,
       mapMs: null,
       isPrefetched: true,
@@ -69,7 +77,7 @@ const demoSet = (picked: number, settle: number): CompassSet => {
 
 /** The text an in-between pick would send in the demo: the two nearest candidates and their shares. */
 export const demoBlendText = (point: Point, items: readonly CompassChoice[]): string => {
-  const [a, b] = weightsAt(point, items)
+  const [a, b] = sharesAt(point, items)
   const first = a === undefined ? undefined : items[a.index]
   const second = b === undefined ? undefined : items[b.index]
   if (first === undefined || second === undefined || a === undefined || b === undefined) return first?.text ?? ''

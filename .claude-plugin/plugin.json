@@ -1,28 +1,55 @@
 {
   "name": "next-compass",
-  "version": "0.1.0",
-  "description": "Four next-instruction predictions in four directions, plus a colored meaning map to send the in-between",
+  "displayName": "next-compass",
+  "version": "0.2.0",
+  "description": "Four predicted next instructions in four directions above the prompt, and a meaning map to send the in-between. English and Japanese.",
+  "author": {
+    "name": "m-aoki",
+    "url": "https://github.com/m-aoki1348125"
+  },
+  "homepage": "https://github.com/m-aoki1348125/next-compass#readme",
+  "repository": "https://github.com/m-aoki1348125/next-compass",
+  "license": "MIT",
+  "keywords": [
+    "mod",
+    "prediction",
+    "next-step",
+    "map",
+    "prompt"
+  ],
   "types": "./types/index.d.ts",
   "userConfig": {
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "UI language. auto follows Claude Code's own language setting.",
+      "options": [
+        "auto",
+        "ja",
+        "en"
+      ],
+      "default": "auto"
+    },
     "keyMode": {
       "type": "string",
       "title": "Key mode",
-      "description": "number: press 1-4 in the empty prompt box. arrow: lay the four choices out as a cross and pick them with the arrow keys after focusing the band (ctrl+x tab or a click).",
-      "options": ["number", "arrow"],
+      "description": "number: press 1-4 in the empty prompt box. arrow: lay the four out as a cross and pick with the arrow keys after focusing the band (ctrl+x tab or a click).",
+      "options": [
+        "number",
+        "arrow"
+      ],
       "default": "number"
-    },
-    "choiceMode": {
-      "type": "string",
-      "title": "How the four are made",
-      "description": "split: two parallel calls, one per axis (forward/back, widen/harden), for speed. single: one call that also picks the axes freely each turn (slower).",
-      "options": ["split", "single"],
-      "default": "split"
     },
     "generator": {
       "type": "string",
       "title": "Generator",
-      "description": "Model that writes the choices. haiku is cheap and reads the recent messages; fork asks the session's own model over the whole conversation (more accurate, uses the prompt cache).",
-      "options": ["haiku", "sonnet", "opus", "fork"],
+      "description": "Model that writes the four and the blended instruction. haiku is cheap and reads a cached summary of the recent messages; fork asks the session's own model over the whole conversation (slower, uses the session's prompt cache). Candidates prepared while Claude works and the final pick always use haiku.",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fork"
+      ],
       "default": "haiku"
     },
     "showMap": {
