@@ -1,0 +1,171 @@
+import type { ClientModule, ClientSurface, RenderElement } from 'claude-code'
+
+import { PALETTE, lighten } from './compass'
+import { blend, fitRows, fluxCell } from './field'
+import type { Run } from './field'
+
+/**
+ * `gems`: one light per recent tool call, its palette color by the kind of
+ * work (edit, command, read, other); `label`: the line under the field;
+ * `isWorking`: fast while a turn runs, slow while the session waits.
+ */
+export type FluxProps = { gems: number[]; label: string; isWorking: boolean }
+
+type FluxState = { frame: number }
+
+const FRAME_MS = 180
+const MAX_GEMS = 6
+const HALO = 2.6
+const TRAIL = 4
+
+/** The facets a gem turns through as it drifts, so it seems to catch the light. */
+const FACETS = ['✦', '✧', '✦', '❖'] as const
+
+/**
+ * Where a gem floats at time t, in cells: a slow loop of its own, swayed by
+ * a ripple, so the lights seem carried along by the field.
+ */
+const gemAt = (index: number, t: number, columns: number, rows: number) => {
+  const phase = index * 2.39
+  const x = 0.5 + Math.sin(t * 0.23 + phase) * 0.4 + Math.sin(t * 0.9 + phase * 3) * 0.04
+  const y = 0.5 + Math.cos(t * 0.19 + phase * 1.3) * 0.38 + Math.cos(t * 1.1 + phase) * 0.05
+  return { col: x * (columns - 1), row: y * (rows - 1) }
+}
+
+export type Light = { col: number; row: number; color: string; strength: number; glyph: string | null; isHead: boolean }
+
+/** Each gem's head and the fading points of its trail. */
+/**
+ * Where the gems are drawn to while the space settles into the four: gem i
+ * glides `pull` of the way to `targets[i]` (in cells) and dims as it lands.
+ */
+export type Pull = { targets: readonly { col: number; row: number }[]; pull: number }
+
+export const lightsOf = (
+  gems: readonly number[],
+  t: number,
+  frame: number,
+  columns: number,
+  rows: number,
+  toward: Pull = { targets: [], pull: 0 },
+): Light[] =>
+  gems.flatMap((kind, i) => {
+    const color = PALETTE[kind % PALETTE.length] ?? PALETTE[0]
+    const facet = FACETS[(frame + i) % FACETS.length] ?? '✦'
+    const target = toward.targets[i % Math.max(1, toward.targets.length)]
+    const f = target === undefined ? 0 : toward.pull * toward.pull * (3 - 2 * toward.pull)
+    return Array.from({ length: TRAIL + 1 }, (_, k) => {
+      const at = gemAt(i, t - k * 0.25, columns, rows)
+      const col = target === undefined ? at.col : at.col + (target.col - at.col) * f
+      const row = target === undefined ? at.row : at.row + (target.row - at.row) * f
+      const strength = (1 - k / (TRAIL + 1)) * (1 - toward.pull * 0.8)
+      return { col, row, color, strength, glyph: k === 0 ? facet : k <= 2 ? '·' : null, isHead: k === 0 }
+    })
+  })
+
+/** One cell: the field, brightened toward each light near it; a gem or a trail point on top. */
+export const lit = (col: number, row: number, base: Run, lights: readonly Light[]): Run => {
+  const near = lights
+    .map(l => ({ l, d: Math.hypot((l.col - col) * 0.5, l.row - row) }))
+    .filter(({ d }) => d < HALO)
+  const bg = near.reduce((c, { l, d }) => blend(c, l.color, (1 - d / HALO) ** 2 * 0.55 * l.strength), base.bg)
+  const on = near.find(({ l }) => l.glyph !== null && Math.round(l.col) === col && Math.round(l.row) === row)
+  if (on === undefined) return { ...base, bg, color: near.length > 0 ? lighten(bg, 0.4) : base.color }
+  const { isHead } = on.l
+  return {
+    text: on.l.glyph ?? base.text,
+    color: isHead ? lighten(on.l.color, 0.7) : lighten(on.l.color, 0.35),
+    bg: isHead ? blend(bg, on.l.color, 0.5) : bg,
+    bold: isHead,
+  }
+}
+
+/** One row's cells; `fitRows` turns the rows into runs that fit the tree. */
+const drawRow = (row: number, t: number, columns: number, rows: number, lights: readonly Light[]): Run[] =>
+  Array.from({ length: columns }, (_, col) =>
+    lit(col, row, { ...fluxCell((col / columns) * 2 - 1, (row / rows) * 2 - 1, t), bold: false }, lights),
+  )
+
+/** A hue (degrees) at full-ish saturation as hex, for the rainbow label. */
+const hue = (deg: number, light: number): string => {
+  const h = ((deg % 360) + 360) % 360
+  const c = (1 - Math.abs(2 * light - 1)) * 0.9
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = light - c / 2
+  const [r, g, b] =
+    h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x]
+  return `#${[r, g, b].map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
+ * The label as a rainbow that flows, as ultrathink is drawn: each character
+ * a hue further along, the hues moving with the frames, and a bright band
+ * sweeping across now and then.
+ */
+export const rainbow = (label: string, frame: number) => {
+  const chars = Array.from(label)
+  const sweep = (frame * 1.5) % (chars.length + 24)
+  return chars.map((char, i) => {
+    const shine = Math.max(0, 1 - Math.abs(i - sweep) / 3)
+    return { char, color: hue(i * 14 - frame * 18, 0.66 + shine * 0.24), bold: shine > 0.3 }
+  })
+}
+
+const start = (surface: ClientSurface<FluxState>): void => {
+  surface.setState({ frame: 0 })
+  surface.every(FRAME_MS, () => surface.setState({ frame: (surface.state?.frame ?? 0) + 1 }))
+}
+
+/**
+ * The props as they came, read defensively: an instance can be handed props
+ * of an older shape across a hot reload, and a throw would unmount it.
+ */
+const readProps = (raw: unknown): FluxProps => {
+  const obj = (raw ?? {}) as Record<string, unknown>
+  return {
+    gems: Array.isArray(obj.gems) ? obj.gems.filter((g): g is number => typeof g === 'number') : [],
+    label: typeof obj.label === 'string' ? obj.label : '',
+    isWorking: obj.isWorking === true,
+  }
+}
+
+const Flux: ClientModule<FluxProps, FluxState> = (raw, surface): RenderElement => {
+  const props = readProps(raw)
+  const { Box, Text } = surface.elements
+  if (surface.state === undefined) start(surface)
+  const frame = surface.state?.frame ?? 0
+  const t = frame * (props.isWorking ? 0.12 : 0.03)
+  const rows = Math.max(1, surface.rows - 1)
+  const { columns } = surface
+  if (columns < 8) return <Text dimColor>{props.label}</Text>
+  const lights = lightsOf(props.gems.slice(-MAX_GEMS), t, frame, columns, rows)
+  const lines = fitRows(Array.from({ length: rows }, (_, row) => drawRow(row, t, columns, rows, lights)))
+  return (
+    <Box flexDirection="column">
+      {lines.map(runs => (
+        <Text>
+          {runs.map(r => (
+            <Text color={r.color} backgroundColor={r.bg} {...(r.bold ? { bold: true } : {})}>
+              {r.text}
+            </Text>
+          ))}
+        </Text>
+      ))}
+      {props.isWorking ? (
+        <Text wrap="truncate-end">
+          {rainbow(props.label, frame).map(c => (
+            <Text color={c.color} bold={c.bold}>
+              {c.char}
+            </Text>
+          ))}
+        </Text>
+      ) : (
+        <Text dimColor wrap="truncate-end">
+          {props.label}
+        </Text>
+      )}
+    </Box>
+  )
+}
+
+export default Flux

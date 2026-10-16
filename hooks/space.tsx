@@ -1,0 +1,321 @@
+import type { ClientModule, ClientSurface, RenderElement } from 'claude-code'
+
+import type { CompassChoice } from '../types'
+import { blend, fitRows, fluxCell, mapCell } from './field'
+import type { Cell as FieldCell, Run } from './field'
+import { lightsOf, lit, rainbow } from './flux'
+import { MOVES, caption, center, cursorOf, placeItems, paint, sameCell, toCell, toPoint } from './map'
+import type { Cell, Grid, MapState } from './map'
+
+/**
+ * The one space the pane draws, whatever the moment: the free field while
+ * Claude works (gems drifting in it), the same field shaped around the four
+ * once they land. One instance, one clock: when the four arrive the field's
+ * colors melt into theirs, the gems glide to where the four sit and fade, the
+ * extras surface and then the chips, so nothing is torn down in between; a
+ * new turn melts the map back into the flux the same way.
+ */
+export type SpaceProps = {
+  /** One gem per recent tool call (palette index by kind of work). */
+  gems: number[]
+  label: string
+  isWorking: boolean
+  /** The four (first, `isPrimary`) and the extras; none while Claude works. */
+  items: CompassChoice[]
+  labels: string[]
+  isBusy: boolean
+  /** A pointer the plugin moves (the demo); null when none. */
+  ghost: { x: number; y: number } | null
+}
+
+type Mode = 'flux' | 'map'
+
+/**
+ * `t` runs on, at a pace by moment (fast while Claude works), so the field
+ * never jumps; `from` and `changedAt` say where the melt between the two
+ * moments started, so its progress follows from the frame alone.
+ */
+type SpaceState = {
+  frame: number
+  t: number
+  speed: number
+  mode: Mode
+  from: number
+  changedAt: number
+  cursor: Cell | null
+  hover: Cell | null
+  /** The last map's items and labels, kept so a new turn melts them away rather than dropping them. */
+  lastItems: CompassChoice[]
+  lastLabels: string[]
+}
+
+const TICK_MS = 120
+/** Ticks the melt between the free field and the map takes. */
+const MELT_TICKS = 9
+const WORK_SPEED = 0.08
+const MAP_SPEED = 0.024
+const IDLE_SPEED = 0.02
+/** Rows under the grid: the label while Claude works, the blend under the pointer once the four are in. */
+const CAPTION_ROWS = 2
+/** How far the melt must be before the extras, then the chips and the cursor, show. */
+const EXTRAS_AT = 0.3
+const CHIPS_AT = 0.6
+
+const clamp01 = (n: number): number => Math.max(0, Math.min(1, n))
+
+/** How far toward the map the space is now: 0 the free field, 1 the map. */
+const meltOf = (s: SpaceState): number => {
+  const target = s.mode === 'map' ? 1 : 0
+  return clamp01(s.from + (target - s.from) * clamp01((s.frame - s.changedAt) / MELT_TICKS))
+}
+
+const isChoice = (v: unknown): v is CompassChoice => {
+  const o = (v ?? {}) as Record<string, unknown>
+  return typeof o.text === 'string' && typeof o.x === 'number' && typeof o.y === 'number' && typeof o.isPrimary === 'boolean'
+}
+
+/** The props read defensively: an instance can be handed an older shape across a hot reload. */
+const readProps = (raw: unknown): SpaceProps => {
+  const o = (raw ?? {}) as Record<string, unknown>
+  const ghost = (o.ghost ?? null) as Record<string, unknown> | null
+  return {
+    gems: Array.isArray(o.gems) ? o.gems.filter((g): g is number => typeof g === 'number') : [],
+    label: typeof o.label === 'string' ? o.label : '',
+    isWorking: o.isWorking === true,
+    items: Array.isArray(o.items) ? o.items.filter(isChoice) : [],
+    labels: Array.isArray(o.labels) ? o.labels.map(l => (typeof l === 'string' ? l : '')) : [],
+    isBusy: o.isBusy === true,
+    ghost: ghost !== null && typeof ghost.x === 'number' && typeof ghost.y === 'number' ? { x: ghost.x, y: ghost.y } : null,
+  }
+}
+
+const gridRows = (surface: ClientSurface<SpaceState>): number => Math.max(1, surface.rows - CAPTION_ROWS)
+
+/** Pointer and keys act on the map only, once it has settled enough to show its chips. */
+const listen = (surface: ClientSurface<SpaceState>): void => {
+  const live = (): SpaceState | null => {
+    const s = surface.state
+    return s !== undefined && s.mode === 'map' && meltOf(s) >= CHIPS_AT ? s : null
+  }
+  surface.onPointer(e => {
+    const s = live()
+    if (s === null) return
+    const rows = gridRows(surface)
+    const cell = { col: e.x, row: e.y }
+    const inside = e.x >= 0 && e.y >= 0 && e.x < surface.columns && e.y < rows
+    if (e.type === 'leave' || !inside) return s.hover === null ? undefined : surface.setState({ ...s, hover: null })
+    if (e.type === 'move' && !sameCell(s.hover, cell)) return surface.setState({ ...s, hover: cell })
+    if (e.type === 'down' && e.button === 'left') {
+      surface.setState({ ...s, cursor: cell, hover: cell })
+      const p = toPoint(cell, surface.columns, rows)
+      surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true })
+    }
+  })
+  surface.onKey(e => {
+    const s = live()
+    if (s === null) return
+    const rows = gridRows(surface)
+    const from = cursorOf(s, surface.columns, rows)
+    const move = MOVES[e.key]
+    if (move !== undefined) {
+      const step = e.shift ? 3 : 1
+      const cursor = {
+        col: Math.min(surface.columns - 1, Math.max(0, from.col + move.col * step)),
+        row: Math.min(rows - 1, Math.max(0, from.row + move.row * step)),
+      }
+      return surface.setState({ ...s, cursor })
+    }
+    if (e.key === 'return') {
+      const p = toPoint(from, surface.columns, rows)
+      return surface.post({ kind: 'pick', x: p.x, y: p.y, fill: e.shift === true })
+    }
+    if (/^[1-4]$/.test(e.key)) surface.post({ kind: 'choose', index: Number(e.key) - 1, fill: e.shift === true })
+  })
+}
+
+const start = (surface: ClientSurface<SpaceState>, mode: Mode, speed: number): void => {
+  // Mounted straight into the map (no flux before it), the map shows whole at once.
+  surface.setState({
+    frame: 0,
+    t: 0,
+    speed,
+    mode,
+    from: mode === 'map' ? 1 : 0,
+    changedAt: -MELT_TICKS,
+    cursor: null,
+    hover: null,
+    lastItems: [],
+    lastLabels: [],
+  })
+  surface.every(TICK_MS, () => {
+    const s = surface.state
+    if (s !== undefined) surface.setState({ ...s, frame: s.frame + 1, t: s.t + s.speed })
+  })
+  listen(surface)
+}
+
+/** The ground at a cell: the free field melting into the map's, by `melt`. */
+const groundAt = (x: number, y: number, t: number, items: readonly CompassChoice[], melt: number): FieldCell => {
+  const free = fluxCell(x, y, t)
+  if (melt <= 0) return free
+  const shaped = mapCell(x, y, t, items)
+  if (melt >= 1) return shaped
+  return {
+    text: melt < 0.5 ? free.text : shaped.text,
+    color: blend(free.color, shaped.color, melt),
+    bg: blend(free.bg, shaped.bg, melt),
+  }
+}
+
+/** What the map lays over the ground at this point of the melt: nothing, the extras, then everything. */
+const shownAt = (placed: Grid, melt: number): Grid => {
+  if (melt >= CHIPS_AT) return placed
+  if (melt < EXTRAS_AT) return {}
+  return Object.fromEntries(Object.entries(placed).filter(([, g]) => g.char === '✦' && g.bg === undefined))
+}
+
+type Scene = {
+  props: SpaceProps
+  view: SpaceState
+  melt: number
+  columns: number
+  rows: number
+}
+
+/** Every grid row's cells: ground, then the gems' light, then the map's chips, extras and pointer. */
+const drawGrid = ({ props, view, melt, columns, rows }: Scene): Run[][] => {
+  const placed = shownAt(melt > 0 ? placeItems({ ...props }, columns, rows) : {}, melt)
+  const targets = props.items.filter(i => i.isPrimary).map(i => toCell(i.x, i.y, columns, rows))
+  const lights = melt < 1 ? lightsOf(props.gems, view.t, view.frame, columns, rows, { targets, pull: melt }) : []
+  const ghost = props.ghost === null ? null : toCell(props.ghost.x, props.ghost.y, columns, rows)
+  const pointer: MapState = {
+    cursor: ghost ?? (melt >= CHIPS_AT ? cursorOf(view, columns, rows) : null),
+    hover: ghost === null && melt >= CHIPS_AT ? view.hover : null,
+    frame: view.frame,
+  }
+  return Array.from({ length: rows }, (_, row) =>
+    Array.from({ length: columns }, (_, col): Run => {
+      const cell = { col, row }
+      const p = toPoint(cell, columns, rows)
+      const ground = { ...groundAt(p.x, p.y, view.t, props.items, melt), bold: false }
+      const isMarked =
+        placed[`${col},${row}`] !== undefined || sameCell(pointer.cursor, cell) || sameCell(pointer.hover, cell)
+      if (!isMarked) return lights.length > 0 ? lit(col, row, ground, lights) : ground
+      const g = paint(cell, ground, placed, pointer)
+      return { text: g.char, color: g.color, bg: g.bg, bold: g.bold === true }
+    }).filter(r => r.text !== ''),
+  )
+}
+
+/** A short signature of the items, to notice when the map's content changed. */
+const signOf = (items: readonly CompassChoice[]): string => items.map(i => `${i.text}|${i.x}|${i.y}|${i.isPrimary}`).join('\n')
+
+/** The state for this render: a change of moment starts a melt from wherever the last one stood. */
+const nextView = (stored: SpaceState, props: SpaceProps, mode: Mode, speed: number): SpaceState => {
+  const melting = stored.mode === mode ? { ...stored, speed } : { ...stored, mode, speed, from: meltOf(stored), changedAt: stored.frame }
+  return mode === 'map' && signOf(stored.lastItems) !== signOf(props.items)
+    ? { ...melting, lastItems: props.items, lastLabels: props.labels }
+    : melting
+}
+
+const Space: ClientModule<SpaceProps, SpaceState> = (raw, surface): RenderElement => {
+  // A throw here would unmount the space for good: draw the label alone instead and go on.
+  try {
+    return drawSpace(readProps(raw), surface)
+  } catch {
+    const { Text } = surface.elements
+    return <Text dimColor>{readProps(raw).label || ' '}</Text>
+  }
+}
+
+const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): RenderElement => {
+  const { Box, Text } = surface.elements
+  const mode: Mode = props.items.length > 0 ? 'map' : 'flux'
+  const speed = mode === 'map' ? MAP_SPEED : props.isWorking ? WORK_SPEED : IDLE_SPEED
+  if (surface.state === undefined) start(surface, mode, speed)
+  const stored: SpaceState = surface.state ?? {
+    frame: 0,
+    t: 0,
+    speed,
+    mode,
+    from: mode === 'map' ? 1 : 0,
+    changedAt: -MELT_TICKS,
+    cursor: null,
+    hover: null,
+    lastItems: [],
+    lastLabels: [],
+  }
+  // Written once per change (a new moment, a new pace, new items), read from then on.
+  const view = nextView(stored, props, mode, speed)
+  if (view !== stored && (view.mode !== stored.mode || view.speed !== stored.speed || view.lastItems !== stored.lastItems)) {
+    surface.setState(view)
+  }
+  const melt = meltOf(view)
+  const rows = gridRows(surface)
+  const { columns } = surface
+  if (columns < 12 || rows < 3) return <Text dimColor>{props.label}</Text>
+  // Melting back into the flux, the map still draws the four it last had, fading with the melt.
+  const drawn = mode === 'map' ? props : { ...props, items: view.lastItems, labels: view.lastLabels }
+  const lines = fitRows(drawGrid({ props: drawn, view, melt, columns, rows }))
+  const cap = melt >= 0.5 && mode === 'map' ? caption({ ...props }, { cursor: view.cursor, hover: view.hover, frame: view.frame }, columns, rows) : null
+  const focus = props.ghost === null ? null : caption({ ...props }, { cursor: toCell(props.ghost.x, props.ghost.y, columns, rows), hover: null, frame: view.frame }, columns, rows)
+  const shown = focus ?? cap
+
+  return (
+    <Box flexDirection="column">
+      {lines.map(runs => (
+        <Text>
+          {runs.map(r => (
+            <Text color={r.color} backgroundColor={r.bg} {...(r.bold ? { bold: true } : {})}>
+              {r.text}
+            </Text>
+          ))}
+        </Text>
+      ))}
+      {shown === null ? (
+        props.isWorking ? (
+          <Text wrap="truncate-end">
+            {rainbow(props.label, view.frame).map(c => (
+              <Text color={c.color} {...(c.bold ? { bold: true } : {})}>
+                {c.char}
+              </Text>
+            ))}
+          </Text>
+        ) : (
+          <Text dimColor wrap="truncate-end">
+            {props.label}
+          </Text>
+        )
+      ) : (
+        <Text wrap="truncate-end">
+          {shown.bar.map(seg => (
+            <Text backgroundColor={seg.color}>{' '.repeat(seg.width)}</Text>
+          ))}
+          <Text> </Text>
+          {shown.shares.map((s, i) => (
+            <Text color={s.color} bold>
+              {i > 0 ? ' · ' : ''}
+              {s.text}
+            </Text>
+          ))}
+        </Text>
+      )}
+      {/* No Fragment inside a Text: the terminal reads it as a Box in an inline element and refuses the tree. */}
+      <Text wrap="truncate-end">
+        {shown === null
+          ? ' '
+          : [
+              <Text color={shown.color} bold>
+                {'▶ '}
+              </Text>,
+              shown.text,
+            ]}
+      </Text>
+    </Box>
+  )
+}
+
+export default Space
+
+// `center` is re-exported for tests that need the grid's middle without the map module.
+export { center }

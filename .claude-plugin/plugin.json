@@ -1,0 +1,41 @@
+{
+  "name": "next-compass",
+  "version": "0.1.0",
+  "description": "Four next-instruction predictions in four directions, plus a colored meaning map to send the in-between",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "keyMode": {
+      "type": "string",
+      "title": "Key mode",
+      "description": "number: press 1-4 in the empty prompt box. arrow: lay the four choices out as a cross and pick them with the arrow keys after focusing the band (ctrl+x tab or a click).",
+      "options": ["number", "arrow"],
+      "default": "number"
+    },
+    "choiceMode": {
+      "type": "string",
+      "title": "How the four are made",
+      "description": "split: two parallel calls, one per axis (forward/back, widen/harden), for speed. single: one call that also picks the axes freely each turn (slower).",
+      "options": ["split", "single"],
+      "default": "split"
+    },
+    "generator": {
+      "type": "string",
+      "title": "Generator",
+      "description": "Model that writes the choices. haiku is cheap and reads the recent messages; fork asks the session's own model over the whole conversation (more accurate, uses the prompt cache).",
+      "options": ["haiku", "sonnet", "opus", "fork"],
+      "default": "haiku"
+    },
+    "showMap": {
+      "type": "boolean",
+      "title": "Show the meaning map",
+      "description": "Open the meaning map pane at session start (it docks beside the transcript in a wide fullscreen terminal).",
+      "default": true
+    },
+    "extraCount": {
+      "type": "number",
+      "title": "Extra candidates on the map",
+      "description": "How many candidates besides the four to place on the map (0-16).",
+      "default": 8
+    }
+  }
+}
