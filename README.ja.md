@@ -43,6 +43,10 @@ claude plugin install next-compass@next-compass
 ```
 
 クローンから 1 セッションだけ試すには `claude --plugin-dir ./next-compass` です。
+
+Claude デスクトップアプリでは `/plugin` が使えないので、入力欄の横の **+** → **Plugins** → **Add marketplace** に
+`m-aoki1348125/next-compass` を入れ、**Add plugin** を押します。ターミナルから user スコープでインストールした
+プラグインは、デスクトップアプリのローカルセッションでも読み込まれます。
 インストール前に `claude plugin validate ./next-compass` で、この mod が何を呼ぶかを一覧できます。
 
 ## 使い方

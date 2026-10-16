@@ -46,6 +46,10 @@ claude plugin install next-compass@next-compass
 
 Or try it for one session from a clone: `claude --plugin-dir ./next-compass`.
 
+In the Claude desktop app, where `/plugin` does not run: click **+** next to the prompt box, then **Plugins**,
+**Add marketplace** with `m-aoki1348125/next-compass`, then **Add plugin**. A plugin installed from a terminal at
+the user scope also loads in the desktop app's local sessions.
+
 Before installing any mod you can list what it does without running it:
 `claude plugin validate ./next-compass`.
 
