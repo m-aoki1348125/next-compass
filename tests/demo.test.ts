@@ -5,7 +5,7 @@ import type { On, RenderElement, RenderNode, RenderPropsOf } from 'claude-code'
 import { compass, stand } from './state-helpers'
 
 const DEMO = {
-  command: 'compass',
+  command: 'next',
   args: 'demo',
   origin: { kind: 'composer' as const },
   presentation: { isFullscreen: true, columns: 160 },

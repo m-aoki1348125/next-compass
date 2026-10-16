@@ -18,7 +18,7 @@ const SPACE = 'space@2'
 const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
 
 const command = (args: string) => ({
-  command: 'compass',
+  command: 'next',
   args,
   origin: { kind: 'composer' as const },
   presentation: { isFullscreen: true, columns: 160 },
@@ -82,10 +82,10 @@ describe('edges of the flow', () => {
     engine(on, [])
     await $.command.run(command('refresh'))
     await $.prompt.submit({
-      text: '/compass map',
+      text: '/next map',
       origin: { kind: 'composer' },
       wait: false,
-      command: { name: 'compass', args: 'map' },
+      command: { name: 'next', args: 'map' },
     })
     const band = await $.ui.mount({ plugin: 'next-compass', surface: 'terminal', component: 'AbovePrompt', props: bandProps(100) })
     expect(await band.find({ key: 'pick:1' })).toBeDefined()

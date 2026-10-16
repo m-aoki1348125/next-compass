@@ -22,7 +22,7 @@ const EXTRAS = ['- Write the README section', '- Profile the build', '- Split th
 const JA = { options: { language: 'ja' } }
 
 const REFRESH = {
-  command: 'compass',
+  command: 'next',
   args: 'refresh',
   origin: { kind: 'composer' as const },
   presentation: { isFullscreen: true, columns: 160 },
@@ -173,9 +173,13 @@ describe('band', () => {
     await $.command.run(REFRESH)
     const ui = await $.ui.mount({ plugin: 'next-compass', surface: 'desktop', component: 'AbovePrompt', props: BAND })
     const shown = (await ui.find({ key: 'pick:2' }))?.text ?? ''
-    await $.prompt.submit(typed(' 3 '))
+    const result = await $.prompt.submit(typed(' 3 '))
     await clock.settle()
+    // The prompt itself becomes the choice (nothing dropped), and the four are taken.
+    expect(result).not.toHaveProperty('drop')
     expect(submitted).toEqual([shown])
+    await ui.redraw()
+    expect(await ui.find({ key: 'pick:0' })).toBe(undefined)
   })
 
   test('a digit is sent as it is while the band shows no four, and past the four', async ($, on) => {

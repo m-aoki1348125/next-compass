@@ -34,7 +34,7 @@ const STRINGS = {
   hidden: { ja: '帯の4択を隠しました。マップには引き続き表示します。', en: 'The four are hidden above the prompt; the map still shows them.' },
   shown: { ja: '帯の4択とマップを表示します。', en: 'Showing the four and the map.' },
   mapOpened: { ja: 'マップを開きました。', en: 'Map opened.' },
-  unknownVerb: { ja: '「{verb}」は使えません。使い方：/compass {hint}', en: 'Unknown command "{verb}". Usage: /compass {hint}' },
+  unknownVerb: { ja: '「{verb}」は使えません。使い方：/next {hint}', en: 'Unknown command "{verb}". Usage: /next {hint}' },
   stats: {
     ja: '次の一手の採用状況：提示 {offered} 回 · 4択を送信 {band} 回 · マップから送信 {map} 回 · 自分で入力 {typed} 回（採用率 {rate}%）',
     en: 'Next steps: {offered} offered · {band} sent from the four · {map} sent from the map · {typed} typed instead ({rate}% taken)',
@@ -49,6 +49,7 @@ const STRINGS = {
   reasonNoBlend: { ja: '指示を作れませんでした', en: 'no instruction made' },
   blendFailed: { ja: 'その位置の指示を作れませんでした：{why}', en: 'No instruction for that spot: {why}' },
   demoNoSend: { ja: 'デモのため送信しません：「{text}」', en: 'Demo: not sending "{text}"' },
+  digitToBox: { ja: '選んだ候補を入力欄に入れました。確かめてから送信してください。', en: 'The picked choice is in the prompt box: check it, then send.' },
   thinking: { ja: '次の一手を考えています…', en: 'Thinking of next steps…' },
   blending: { ja: 'マップで選んだ位置から指示を作っています…', en: 'Writing the instruction for that spot…' },
   failed: { ja: '次の一手を作れませんでした：{why} ', en: 'No next steps: {why} ' },
@@ -59,10 +60,10 @@ const STRINGS = {
   demoTag: { ja: '（デモ）', en: ' (demo)' },
   refining: { ja: '回答に合わせて調整中… ', en: 'Refining… ' },
   hintNumber: {
-    ja: '入力欄が空のとき 1〜4 で送信 · ✎ は入力欄に入れて手直し · …で切れた択は入力欄に入ります · /compass でマップ',
-    en: 'Empty prompt: 1-4 sends · ✎ fills the prompt to edit · a choice ending in … fills instead · /compass opens the map',
+    ja: '入力欄が空のとき 1〜4 で送信 · ✎ は入力欄に入れて手直し · …で切れた択は入力欄に入ります · /next でマップ',
+    en: 'Empty prompt: 1-4 sends · ✎ fills the prompt to edit · a choice ending in … fills instead · /next opens the map',
   },
-  hintNumberShort: { ja: '空の入力欄で 1〜4 で送信 · ✎ で入力欄へ · /compass でマップ', en: 'Empty prompt: 1-4 sends · ✎ fills · /compass: map' },
+  hintNumberShort: { ja: '空の入力欄で 1〜4 で送信 · ✎ で入力欄へ · /next でマップ', en: 'Empty prompt: 1-4 sends · ✎ fills · /next: map' },
   paneWorking: { ja: '✦ {demo}Claude が作業中です{kinds}', en: '✦ {demo}Claude is working{kinds}' },
   // The kinds of work seen this turn, named after what Claude is doing, never counted: the gems show how much.
   kindEdit: { ja: '編集', en: 'editing' },

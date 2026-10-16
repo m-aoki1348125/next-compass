@@ -350,11 +350,21 @@ export async function bumpStat($: $, key: StatKey): Promise<void> {
 let isSending = false
 export const sendingNow = (): boolean => isSending
 
-async function send($: $, text: string, fill: boolean, via: 'band' | 'map'): Promise<void> {
+/** A choice taken: work for the four still under way is dropped, the four are cleared, and the take is counted. */
+async function take($: $, via: 'band' | 'map'): Promise<void> {
   latest += 1
   pickSeq += 1
   await clearChoices($)
   await bumpStat($, via)
+}
+
+/** One of the four taken by a digit sent as the prompt: the prompt carries its text, so nothing is sent here. */
+export async function takeTyped($: $): Promise<void> {
+  await take($, 'band')
+}
+
+async function send($: $, text: string, fill: boolean, via: 'band' | 'map'): Promise<void> {
+  await take($, via)
   if (fill) return void (await $.prompt.fill({ text }))
   isSending = true
   try {

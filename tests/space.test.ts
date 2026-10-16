@@ -19,7 +19,7 @@ const EXTRAS = ['- Write the README section', '- Profile the build', '- Split th
 const JA = { options: { language: 'ja' } }
 
 const command = (args: string) => ({
-  command: 'compass',
+  command: 'next',
   args,
   origin: { kind: 'composer' as const },
   presentation: { isFullscreen: true, columns: 160 },

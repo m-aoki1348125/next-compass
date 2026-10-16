@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- The command is now `/next` (was `/compass`, whose name sits next to the built-in `/compact` in the
+  typeahead): `/next map`, `/next goal <text>`, `/next refresh`, `/next hide`, `/next show`,
+  `/next stats`, `/next demo`.
+- The desktop pane draws the space: the desktop lays a region out to its content, so a first render too
+  small for the grid kept it one row tall; the space now draws to the height asked. Its rows are drawn in
+  the monospaced face, so they line up and fill the pane.
+- The band no longer draws a number before each choice: the key the choice is pressed with already shows it.
+- On the desktop a digit typed in an empty prompt is sent as text; while the band shows the four, a sent
+  `1`-`4` alone now becomes that choice (a cut one goes to the prompt box, as its key would).
+
 ## 0.3.3 — 2026-10-16
 
 - English wording reviewed: the band hint and the map help say what a pick does (a candidate as written, a

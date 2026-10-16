@@ -18,6 +18,7 @@ import {
   resetTurn,
   sendingNow,
   setMapShown,
+  takeTyped,
 } from './generate'
 import type { Runtime } from './generate'
 import { makeT, resolveLang } from './i18n'
@@ -184,7 +185,7 @@ export const register: Register = (on, options) => {
     await putFaults($, () => 0)
     await setPhase($, 'idle', null)
     await putPreview($, null)
-    await $.command.register({ name: 'compass', description: rt.t('commandDescription'), argumentHint: rt.t('commandHint') })
+    await $.command.register({ name: 'next', description: rt.t('commandDescription'), argumentHint: rt.t('commandHint') })
     if (settings.showMap) void openMap($)
     return next(e)
   })
@@ -207,7 +208,7 @@ export const register: Register = (on, options) => {
     return result
   })
 
-  on('command.run', { command: 'compass' }, async ($, e) => {
+  on('command.run', { command: 'next' }, async ($, e) => {
     const [verb = 'map', ...rest] = e.args.trim().split(/\s+/)
     const arg = rest.join(' ').trim()
     const { t } = rt
@@ -286,8 +287,14 @@ export const register: Register = (on, options) => {
     // A bare digit the band did not take (the desktop sends it as text) picks that choice, as its key would.
     const picked = sendingNow() || e.command !== undefined || e.isMeta === true ? null : await digitPick($, e.text)
     if (picked !== null) {
-      void choose($, rt, picked.index, picked.isCut, picked.text)
-      return { drop: 'next-compass: a digit picks the choice the band shows' }
+      // Sent whole, the digit's prompt becomes the choice; one the band had to cut goes to the prompt box instead.
+      const isDemo = await getDemo($)
+      if (!picked.isCut && !isDemo) {
+        await takeTyped($)
+        return next({ ...e, text: picked.text })
+      }
+      void choose($, rt, picked.index, true, picked.text)
+      return { drop: isDemo ? rt.t('demoNoSend', { text: picked.text }) : rt.t('digitToBox') }
     }
     if (!sendingNow() && e.command === undefined && e.isMeta !== true && (await getSet($)) !== null) {
       void bumpStat($, 'typed')

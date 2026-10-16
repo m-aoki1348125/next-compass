@@ -64,7 +64,7 @@ const CHOICES = [
 ].join('\n')
 
 const COMMAND = {
-  command: 'compass',
+  command: 'next',
   origin: { kind: 'composer' as const },
   presentation: { isFullscreen: true, columns: 160 },
 }

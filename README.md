@@ -66,10 +66,10 @@ Before installing any mod you can list what it does without running it:
 The map adapts to its size: wide and tall, it names the directions and shows every extra candidate on a
 textured ground; smaller (above the prompt in a small terminal), it keeps the gems and numbers and drops the
 names, then the extras.
-| `/compass goal <text>` | Sets the goal the four lean toward; `/compass goal` clears it |
-| `/compass map` · `hide` · `show` · `refresh` | Opens the map, hides or shows the band, remakes the four |
-| `/compass stats` | How often the next steps were taken, across sessions |
-| `/compass demo` | A 16-second scripted demo; no model is called and nothing is sent |
+| `/next goal <text>` | Sets the goal the four lean toward; `/next goal` clears it |
+| `/next map` · `hide` · `show` · `refresh` | Opens the map, hides or shows the band, remakes the four |
+| `/next stats` | How often the next steps were taken, across sessions |
+| `/next demo` | A 16-second scripted demo; no model is called and nothing is sent |
 
 The map pane docks beside the transcript in a wide terminal (about 144 columns) or in the desktop
 app; the band above the prompt works everywhere.
@@ -98,7 +98,7 @@ are masked before they leave; other forms (a password in a URL, a token after a 
 the summary as you treat the conversation itself. With `fork`, the session's own model reads the whole
 conversation for the four and the blend; the candidates prepared while Claude works and the final pick
 still go to haiku with the summary. The one thing stored across sessions is the four counters behind
-`/compass stats`.
+`/next stats`.
 
 The transcript is sent as data, fenced and marked as such, but a model can still be led by text inside
 it. The rule the mod follows is therefore: the band sends only a choice it could show in full, the map
@@ -112,7 +112,7 @@ has just asked you a numbered question, type the digit with a word (`option 1`) 
 ## Requirements
 
 - Claude Code with mods. Developed and tested with 2.1.301; the map draws in the terminal and the desktop app.
-- Organizations can block user-installed mods; if `/compass` does not exist after installing, ask your
+- Organizations can block user-installed mods; if `/next` does not exist after installing, ask your
   administrator.
 
 ## Known limits

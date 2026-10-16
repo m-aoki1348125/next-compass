@@ -10,7 +10,7 @@ import { POOL_TEXTS, compass, endTurn, mountBand, mountPane, pickAt, preparedTur
  *     ▲                     │ aborted / error                 │ fail      │ press / ✎ / turn.start
  *     └─────────────────────┴─────────────── idle ◀── error ◀─┘           ▼
  *   shown ──map pick──▶ blending ──▶ shown + preview ──pick again──▶ sent    idle
- *   any ──/compass demo──▶ demo ──turn.start / refresh──▶ (demo off)
+ *   any ──/next demo──▶ demo ──turn.start / refresh──▶ (demo off)
  */
 
 const SET_FOUR = ['Implement the export', 'Refactor the parser', 'Investigate the flaky test', 'Add tests for the parser']
@@ -215,7 +215,7 @@ describe('mode edges', () => {
 
 /** Defects found in review of the old design, each pinned as the behaviour it must have. */
 describe('fixed review findings', () => {
-  test('M5: a demo cut short by /compass refresh turns the work state off', async ($, on) => {
+  test('M5: a demo cut short by /next refresh turns the work state off', async ($, on) => {
     const engine = stand(on)
     await compass($, 'demo')
     await engine.clock.advance(3000)

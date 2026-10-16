@@ -154,9 +154,9 @@ export const SPACE = 'space@2'
 export const pickAt = (pane: Pane, x: number, y: number, fill = false, previewShownWhole = true, onItem: number | null = null, onText: string | null = null) =>
   pane.post({ kind: 'pick', x, y, fill, previewShownWhole, onItem, onText }, { in: SPACE })
 
-/** `/compass <args>` as the person runs it. */
+/** `/next <args>` as the person runs it. */
 export const compass = ($: Engine, args: string) =>
-  $.command.run({ command: 'compass', args, origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
+  $.command.run({ command: 'next', args, origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
 
 export const startTurn = ($: Engine, turnId = 't1', agentId?: string) =>
   $.turn.start({ text: 'do the work', turnId, ...(agentId === undefined ? {} : { agentId }) })
