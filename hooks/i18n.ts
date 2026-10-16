@@ -58,10 +58,6 @@ const STRINGS = {
   bandTitle: { ja: '✦ 次の一手', en: '✦ Next step' },
   demoTag: { ja: '（デモ）', en: ' (demo)' },
   refining: { ja: '回答に合わせて調整中… ', en: 'Refining… ' },
-  hintArrow: {
-    ja: 'ctrl+x tab で選択に移り、矢印キーと Enter で送信 · 数字キーも使えます · ✎ は入力欄へ · …は入力欄に入ります',
-    en: 'ctrl+x tab, arrows + Enter sends · digits too · ✎ fills the prompt · … fills, not sends',
-  },
   hintNumber: {
     ja: '入力欄が空のとき 1〜4 で送信 · ✎ は入力欄に入れて手直し · …で切れた択は入力欄に入ります · /compass でマップ',
     en: 'Empty prompt: 1-4 sends · ✎ fills to edit · … fills, not sends · /compass: map',

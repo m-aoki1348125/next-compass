@@ -107,7 +107,6 @@ export async function patchSet($: $, id: number, fn: (set: CompassSet) => Compas
 export type Generator = 'haiku' | 'sonnet' | 'opus' | 'fork'
 
 export type Settings = {
-  keyMode: 'number' | 'arrow'
   generator: Generator
   showMap: boolean
   extraCount: number
@@ -119,7 +118,6 @@ export type Settings = {
 const GENERATORS: readonly Generator[] = ['haiku', 'sonnet', 'opus', 'fork']
 
 export const readSettings = (options: PluginOptions): Settings => ({
-  keyMode: options.keyMode === 'arrow' ? 'arrow' : 'number',
   generator: GENERATORS.find(g => g === options.generator) ?? 'haiku',
   showMap: options.showMap !== false,
   extraCount: clampExtra(typeof options.extraCount === 'number' ? options.extraCount : 8),

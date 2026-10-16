@@ -67,7 +67,6 @@ claude plugin install next-compass@next-compass
 |---|---|---|
 | `language` | **`auto`** / `ja` / `en` | UI の言語。`auto` は Claude Code 本体の `language` 設定に従う |
 | `choiceLanguage` | **`auto`** / `ja` / `en` | 予測する指示の言語。`auto` は UI の言語に合わせるので、4 択の言語が混ざらない |
-| `keyMode` | **`number`** / `arrow` | `number`：空の入力欄で 1〜4。`arrow`：十字に並べ、帯にフォーカス（`ctrl+x tab`）してから矢印キーで選ぶ |
 | `generator` | **`haiku`** / `sonnet` / `opus` / `fork` | 4 択と中間の指示を書くモデル。`fork` はセッション自身のモデルで会話全体を読む |
 | `showMap` | **`true`** / `false` | セッション開始時にマップを開く |
 | `extraCount` | **8**（0〜16） | 4 択のほかにマップへ置く候補の数 |
@@ -91,7 +90,7 @@ haiku に要約を送って行います。セッションをまたいで保存�
 Claude Code 本体の許可確認がそのまま働きます。
 
 空の入力欄で数字だけを打つと、帯のその番号の択が押されます。Claude が番号付きの質問をしてきた直後は、
-「1番で」のように言葉を添えて打つか、`keyMode` を `arrow` にしてください。
+「1番で」のように言葉を添えて打つか、択をクリックしてください。
 
 ## 必要なもの
 

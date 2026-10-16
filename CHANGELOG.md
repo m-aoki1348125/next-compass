@@ -7,6 +7,9 @@
   · running commands (✦)`. The kinds keep a fixed order (read, edit, run, other tools), so the line does
   not reshuffle as work goes on. "The meaning space is moving" is gone from the label; the motion shows.
 - Shorter English strings throughout the UI (hints, statuses, reasons); the Japanese is unchanged.
+- Option `keyMode` and the arrow-key cross are removed: the arrow keys belong to Claude Code's own history
+  and focus movement, and a focused band's ring moves in drawing order, not by direction. Digits and
+  clicks pick a choice.
 
 ## 0.3.1 — 2026-10-16
 

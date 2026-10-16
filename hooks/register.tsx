@@ -341,24 +341,10 @@ export const register: Register = (on, options) => {
           {t('bandTitle')}{isDemo ? t('demoTag') : ''}{' '}
         </Text>
         {set.isRefining === true && <Text color="claude">{t('refining')}</Text>}
-        <Text dimColor>{settings.keyMode === 'arrow' ? t('hintArrow') : t('hintNumber')}</Text>
+        <Text dimColor>{t('hintNumber')}</Text>
       </Box>
     )
 
-    if (settings.keyMode === 'arrow') {
-      const room = Math.floor(width / 2) - 6
-      return (
-        <Box flexDirection="column">
-          {header}
-          <Box flexDirection="row" justifyContent="center">{pickButton(0, room)}{edit(0)}</Box>
-          <Box flexDirection="row" justifyContent="space-between">
-            <Box flexDirection="row">{pickButton(3, room)}{edit(3)}</Box>
-            <Box flexDirection="row">{pickButton(1, room)}{edit(1)}</Box>
-          </Box>
-          <Box flexDirection="row" justifyContent="center">{pickButton(2, room)}{edit(2)}</Box>
-        </Box>
-      )
-    }
     return (
       <Box flexDirection="column">
         {header}

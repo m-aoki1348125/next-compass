@@ -71,7 +71,6 @@ app; the band above the prompt works everywhere.
 |---|---|---|
 | `language` | **`auto`** / `ja` / `en` | UI language. `auto` follows Claude Code's own `language` setting |
 | `choiceLanguage` | **`auto`** / `ja` / `en` | Language the predicted instructions are written in. `auto` follows the UI language, so the four never mix languages |
-| `keyMode` | **`number`** / `arrow` | `number`: 1–4 in the empty prompt. `arrow`: a cross you pick from with the arrow keys after focusing the band (`ctrl+x tab`) |
 | `generator` | **`haiku`** / `sonnet` / `opus` / `fork` | Model that writes the four and the blended instruction. `fork` asks the session's own model over the whole conversation |
 | `showMap` | **`true`** / `false` | Open the map at session start |
 | `extraCount` | **8** (0–16) | Candidates besides the four to place on the map |
@@ -99,7 +98,7 @@ goes to the prompt box for you to read first. Claude Code's own permission promp
 the instruction makes Claude do.
 
 Note that in the empty prompt box a bare digit presses the band's choice with that number. When Claude
-has just asked you a numbered question, type the digit with a word (`option 1`), or set `keyMode` to `arrow`.
+has just asked you a numbered question, type the digit with a word (`option 1`) or click the choice.
 
 ## Requirements
 
