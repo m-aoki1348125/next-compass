@@ -19,17 +19,17 @@ Claude の返答が終わるたびに、**次の指示を 4 方向で予測**し
 
 ## 画面
 
-入力欄の上の 4 択と、transcript の横に表示されたマップ（ターミナル、`/next demo`）：
+入力欄の上の 4 択と、transcript の横に表示されたマップ（ターミナル、英語表示で `/next demo` を再生）：
 
-![入力欄の上の 4 択と、落ち着いたマップ](docs/images/ja-choices.png)
+![入力欄の上の 4 択と、落ち着いたマップ](docs/images/en-choices.png)
 
 Claude が作業している間は、ツール呼び出しごとの光が流れる空間になります：
 
-![作業中の動く空間](docs/images/ja-working.png)
+![作業中の動く空間](docs/images/en-working.png)
 
 候補の間を選ぶと、その中間の指示を作ってマップの下に表示し、もう一度選ぶと送信します：
 
-![候補の間を選んだところ。混ぜた指示がマップの下に出ている](docs/images/ja-between.png)
+![候補の間を選んだところ。混ぜた指示がマップの下に出ている](docs/images/en-between.png)
 
 ## 仕組み
 

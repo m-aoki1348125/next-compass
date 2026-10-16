@@ -3,7 +3,7 @@
 ## Unreleased
 
 - README: screenshots of the terminal (the four above the prompt with the docked map, the moving field while
-  Claude works, a spot between candidates with its instruction), in English and Japanese.
+  Claude works, a spot between candidates with its instruction), taken in the English UI.
 - The English short form of the map help was two cells wider than a docked pane of 65 columns and lost its
   tail; it now fits 60 cells.
 
