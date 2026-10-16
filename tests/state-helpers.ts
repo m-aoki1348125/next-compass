@@ -52,6 +52,8 @@ export type Behavior = {
   store?: Record<string, unknown>
   /** Claude Code's own settings as `$.settings.read()` answers them. */
   settings?: Record<string, unknown>
+  /** The conversation as `$.session.messages()` returns it; empty by default. */
+  messages?: readonly unknown[]
 }
 
 export const stand = (on: On, behavior: Behavior = {}) => {
@@ -77,7 +79,7 @@ export const stand = (on: On, behavior: Behavior = {}) => {
     const text = marker === 'BLEND' ? (behavior.blendTexts?.[blendIndex] ?? 'Blend the two steps') : (behavior.replies?.[marker] ?? REPLIES[marker] ?? '')
     return { value: { isAnswered: true as const, text, usage: USAGE } }
   })
-  on('session.messages', () => ({ value: [] }))
+  on('session.messages', () => ({ value: (behavior.messages ?? []) as never }))
   on('settings.read', () => ({ value: (behavior.settings ?? {}) as never }))
   on('prompt.suggest', () => ({ isShown: true }))
   on('turn.start', (_$, e) => ({ turnId: e.turnId }))
