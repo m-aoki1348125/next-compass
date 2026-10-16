@@ -47,6 +47,14 @@ map that means what it shows.
 - `/clear` during a turn stops the prefetch timer.
 - A reload resets the phase to idle.
 
+### Map stability (from the live test)
+- Nothing on the map moves under the person: the final pick and the extras that land later keep every
+  candidate where it was; newcomers join at the similarity-weighted spot among the placed ones, kept
+  apart from them and off the cursor's centre cell (`placeAmong`, `repick`).
+- After a choice is sent or filled, the map's colors stay as they were, still and without chips, until
+  Claude starts working; only then does the field melt back into motion.
+- The cursor over a candidate keeps the candidate's glyph in the cursor's colors instead of hiding it.
+
 ### Review fixes before release
 - The field moves only while Claude works (and during the melt into or out of the map); waiting for the
   person, before any turn or after `/clear`, it is still, like the settled map.

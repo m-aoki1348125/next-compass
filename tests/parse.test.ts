@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { addExtras, arrangeSet, pickFromPool } from '../hooks/arrange'
+import { addExtras, arrangeSet, pickFromPool, placeAmong, repick } from '../hooks/arrange'
 import { BLEND_TOP, parseBlend, parseChoices, parseExtras, sharesAt, weightsAt } from '../hooks/compass'
 import { resolveLang } from '../hooks/i18n'
 import type { CompassChoice, CompassSet } from '../types'
@@ -209,5 +209,52 @@ describe('resolveLang', () => {
     expect(resolveLang('ja', undefined)).toBe('ja')
     for (const s of ['ja', 'ja-JP', 'Japanese', '日本語']) expect(resolveLang('auto', s)).toBe('ja')
     for (const s of [undefined, '', 'en', 'Javanese', 'jav']) expect(resolveLang('auto', s)).toBe('en')
+  })
+})
+
+describe('a map that does not move under the person', () => {
+  const base = () => ({
+    id: 1,
+    ...arrangeSet(parsed(), ['Profile the build', 'Clean up the export module'], new Map()),
+    isMapPending: false,
+    isRefining: true,
+    timings: { contextMs: 0, choicesMs: null, extrasMs: null, layoutMs: null, bandMs: null, mapMs: null, isPrefetched: true },
+  })
+
+  test('addExtras keeps every existing spot exactly and places newcomers apart from them', () => {
+    const set = base()
+    const next = addExtras(set, ['Write the README section', 'Measure speed on big data'])
+    set.items.forEach((item, i) => expect(next.items[i]).toEqual(item))
+    const spots = next.items.map(i => [i.x, i.y] as const)
+    spots.forEach((a, i) => spots.forEach((b, j) => { if (i < j) expect(Math.hypot(a[0] - b[0], a[1] - b[1])).toBeGreaterThanOrEqual(0.15 - 1e-9) }))
+  })
+
+  test('placeAmong puts a newcomer near the placed text it resembles', () => {
+    const placed = [
+      { text: 'Add tests for the parser', spot: { x: -0.8, y: 0 } },
+      { text: 'Write the README section', spot: { x: 0.8, y: 0 } },
+    ]
+    const [p] = placeAmong(placed, ['Add more tests for the parser module'])
+    expect(p).toBeDefined()
+    expect((p?.x ?? 0) < 0).toBe(true)
+  })
+
+  test('repick keeps known texts where they were and demotes the rest to extras', () => {
+    const set = base()
+    const kept = set.items.find(i => i.isPrimary)
+    const picked = {
+      axes: { up: 'a', right: 'b', down: 'c', left: 'd' },
+      items: [kept?.text ?? '', 'Profile the build', 'Brand new step', 'Another new step'].map(text => ({ text, x: 0, y: 0, isPrimary: true })),
+    }
+    const next = repick(set, picked, ['Clean up the export module'])
+    const primaries = next.items.filter(i => i.isPrimary)
+    expect(primaries).toHaveLength(4)
+    const again = next.items.find(i => i.text === kept?.text)
+    expect([again?.x, again?.y]).toEqual([kept?.x, kept?.y])
+    const profile = next.items.find(i => i.text === 'Profile the build')
+    const before = set.items.find(i => i.text === 'Profile the build')
+    expect([profile?.x, profile?.y]).toEqual([before?.x, before?.y])
+    expect(next.items.filter(i => !i.isPrimary).map(i => i.text)).toContain('Clean up the export module')
+    expect(new Set(next.items.map(i => i.text)).size).toBe(next.items.length)
   })
 })

@@ -158,8 +158,9 @@ export const paint = (cell: Cell, ground: { text: string; color: string; bg: str
   const { bg } = ground
   const item = placed[keyOf(cell.col, cell.row)]
   if (item !== undefined && item.char === '') return { char: '', color: '', bg }
+  // The cursor over a candidate keeps the candidate's glyph, in the cursor's colors: nothing on the map is hidden by it.
   if (sameCell(state.cursor, cell) && (item === undefined || widthOf(item.char) === 1)) {
-    return { char: '◎', color: '#111111', bg: '#ffffff', bold: true }
+    return { char: item?.char ?? '◎', color: '#111111', bg: '#ffffff', bold: true }
   }
   if (sameCell(state.hover, cell)) {
     return { char: item?.char ?? '+', color: '#ffffff', bg: lighten(item?.bg ?? bg, 0.3), bold: true }

@@ -1,7 +1,7 @@
 import type { Timer } from 'claude-code'
 
 import type { CompassChoice, CompassSet, CompassTimings } from '../types'
-import { addExtras, arrangeSet, pickFromPool, spotsOf } from './arrange'
+import { addExtras, arrangeSet, pickFromPool, repick, spotsOf } from './arrange'
 import {
   MAX_EXTRA,
   PRIMARY_COUNT,
@@ -300,8 +300,7 @@ async function generateFromPool($: $, rt: Runtime, ids: Ids, answer: string, pre
   await relayout($, id, s => {
     const t = { ...s.timings, choicesMs: reply.ms }
     if (picked === null) return { ...s, isRefining: false, timings: t }
-    const extras = [...prepared, ...s.items.map(i => i.text)]
-    return { ...s, ...arrangeSet(picked.parsed, extras, spotsOf(s)), isRefining: false, timings: t }
+    return { ...s, ...repick(s, picked.parsed, prepared), isRefining: false, timings: t }
   })
 }
 

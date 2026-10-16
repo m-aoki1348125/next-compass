@@ -100,7 +100,8 @@ const gems = (rows: readonly string[]): number => Array.from(rows.join('')).filt
 const pointerRow = (rows: readonly string[]): number => rows.findIndex(r => r.includes('◎'))
 
 describe('demo mode', () => {
-  test('plays from Claude working to four picked from the space, calling no model and sending nothing', JA, async ($, on) => {
+  // The script plays 16 s of frames at 120 ms, some 130 redraws of the space: given time on a loaded machine.
+  test('plays from Claude working to four picked from the space, calling no model and sending nothing', { ...JA, timeoutMs: 20_000 }, async ($, on) => {
     const engine = engineBeneath(on)
     await $.command.run(DEMO)
     const pane = await mountPane($)

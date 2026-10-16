@@ -30,7 +30,8 @@ export type SpaceProps = {
   preview: { x: number; y: number; text: string } | null
 }
 
-type Mode = 'flux' | 'map'
+/** `hold`: the four are gone (sent or cleared) and Claude is not working: the last map's colors stay, still, without chips. */
+type Mode = 'flux' | 'map' | 'hold'
 
 /**
  * `t` runs on, at a pace by moment (fast while Claude works), so the field
@@ -69,7 +70,7 @@ const clamp01 = (n: number): number => Math.max(0, Math.min(1, n))
 
 /** How far toward the map the space is now: 0 the free field, 1 the map. */
 const meltOf = (s: SpaceState): number => {
-  const target = s.mode === 'map' ? 1 : 0
+  const target = s.mode === 'flux' ? 0 : 1
   return clamp01(s.from + (target - s.from) * clamp01((s.frame - s.changedAt) / MELT_TICKS))
 }
 
@@ -171,7 +172,7 @@ const start = (surface: ClientSurface<SpaceState>, mode: Mode, speed: number): v
     t: 0,
     speed,
     mode,
-    from: mode === 'map' ? 1 : 0,
+    from: mode === 'flux' ? 0 : 1,
     changedAt: -MELT_TICKS,
     cursor: null,
     hover: null,
@@ -212,17 +213,20 @@ type Scene = {
   melt: number
   columns: number
   rows: number
+  /** Whether the map's chips, extras and pointer are laid over the ground (the map); not while holding its colors or in the flux. */
+  hasItems: boolean
 }
 
 /** Every grid row's cells: ground, then the gems' light, then the map's chips, extras and pointer. */
-const drawGrid = ({ props, view, melt, columns, rows }: Scene): Run[][] => {
-  const placed = shownAt(melt > 0 ? placeItems({ ...props }, columns, rows) : {}, melt)
+const drawGrid = ({ props, view, melt, columns, rows, hasItems }: Scene): Run[][] => {
+  // Holding the last map's colors (the four are gone), nothing is laid over the ground.
+  const placed = hasItems && melt > 0 ? shownAt(placeItems({ ...props }, columns, rows), melt) : {}
   const targets = props.items.filter(i => i.isPrimary).map(i => toCell(i.x, i.y, columns, rows))
   const lights = melt < 1 ? lightsOf(props.gems, view.t, view.frame, columns, rows, { targets, pull: melt }) : []
   const ghost = props.ghost === null ? null : toCell(props.ghost.x, props.ghost.y, columns, rows)
   const previewAt = props.preview === null ? null : toCell(props.preview.x, props.preview.y, columns, rows)
   // A cursor moved away from the preview is the pointer again; the preview's spot keeps its mark otherwise.
-  const own = melt >= CHIPS_AT ? cursorOf(view, columns, rows) : null
+  const own = melt >= CHIPS_AT && hasItems ? cursorOf(view, columns, rows) : null
   const pointer: MapState = {
     cursor: ghost ?? (view.cursor !== null && !sameCell(view.cursor, previewAt) ? own : (previewAt ?? own)),
     hover: ghost === null && melt >= CHIPS_AT ? view.hover : null,
@@ -265,15 +269,16 @@ const Space: ClientModule<SpaceProps, SpaceState> = (raw, surface): RenderElemen
 
 const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): RenderElement => {
   const { Box, Text } = surface.elements
-  const mode: Mode = props.items.length > 0 ? 'map' : 'flux'
-  const speed = mode === 'map' ? MAP_SPEED : props.isWorking ? WORK_SPEED : IDLE_SPEED
+  const had = (surface.state?.lastItems.length ?? 0) > 0
+  const mode: Mode = props.items.length > 0 ? 'map' : !props.isWorking && had ? 'hold' : 'flux'
+  const speed = mode === 'flux' ? (props.isWorking ? WORK_SPEED : IDLE_SPEED) : MAP_SPEED
   if (surface.state === undefined) start(surface, mode, speed)
   const stored: SpaceState = surface.state ?? {
     frame: 0,
     t: 0,
     speed,
     mode,
-    from: mode === 'map' ? 1 : 0,
+    from: mode === 'flux' ? 0 : 1,
     changedAt: -MELT_TICKS,
     cursor: null,
     hover: null,
@@ -287,14 +292,14 @@ const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): Rende
   }
   const melt = meltOf(view)
   // The field moves only while Claude works or a melt is under way; a settled map and an idle wait are still.
-  const isStill = melt >= 1 ? mode === 'map' : melt <= 0 && mode === 'flux' && !props.isWorking
+  const isStill = melt >= 1 ? mode !== 'flux' : melt <= 0 && mode === 'flux' && !props.isWorking
   tick(!isStill)
   const rows = gridRows(surface)
   const { columns } = surface
   if (columns < 12 || rows < 3) return <Text dimColor>{props.label}</Text>
   // Melting back into the flux, the map still draws the four it last had, fading with the melt.
   const drawn = mode === 'map' ? props : { ...props, items: view.lastItems, labels: view.lastLabels }
-  const lines = fitRows(drawGrid({ props: drawn, view, melt, columns, rows }))
+  const lines = fitRows(drawGrid({ props: drawn, view, melt, columns, rows, hasItems: mode === 'map' }))
   const cap = melt >= 0.5 && mode === 'map' ? caption({ ...props }, { cursor: view.cursor, hover: view.hover, frame: view.frame }, columns, rows) : null
   const focus = props.ghost === null ? null : caption({ ...props }, { cursor: toCell(props.ghost.x, props.ghost.y, columns, rows), hover: null, frame: view.frame }, columns, rows)
   // A written instruction shows whole, over the shares at its spot, until a second pick there sends it.

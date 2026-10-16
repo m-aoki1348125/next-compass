@@ -1,7 +1,7 @@
 import type { CompassAxes, CompassChoice, CompassSet } from '../types'
 import { PRIMARY_COUNT } from './compass'
 import type { ParsedSet, Picked } from './compass'
-import { layoutTexts, nearestTo, spreadPick, toDirections } from './similarity'
+import { layoutTexts, nearestTo, similarityMatrix, spreadPick, toDirections } from './similarity'
 import type { Point } from './similarity'
 
 /**
@@ -63,13 +63,73 @@ export const pickFromPool = (pool: readonly string[], goal: string | null, previ
   return { parsed: { axes: EMPTY_AXES, items: [...primaries, ...others] }, used: order }
 }
 
-/** The set with more extras laid in, the four and the extras it has kept where they were. */
+/** Two spots closer than this (map units) read as one; a newcomer is nudged off. */
+const CROWDED = 0.15
+/** The centre is the keyboard cursor's resting cell: no candidate is put on it. */
+const CENTRE: Point = { x: 0, y: 0 }
+const LIMIT = 0.85
+
+const clampTo = (p: Point): Point => ({ x: Math.max(-LIMIT, Math.min(LIMIT, p.x)), y: Math.max(-LIMIT, Math.min(LIMIT, p.y)) })
+
+/** `p` moved away from the taken spots, a step at a time outward from the centre, until it stands apart. */
+const nudgeOff = (p: Point, taken: readonly Point[]): Point => {
+  const crowded = (q: Point) => taken.some(t => Math.hypot(t.x - q.x, t.y - q.y) < CROWDED)
+  const out = Math.hypot(p.x, p.y) < 1e-6 ? { x: 0.7, y: 0.7 } : { x: p.x / Math.hypot(p.x, p.y), y: p.y / Math.hypot(p.x, p.y) }
+  const tries = Array.from({ length: 12 }, (_, k) => clampTo({ x: p.x + out.x * CROWDED * (k + 1) * 0.8, y: p.y + out.y * CROWDED * (k + 1) * 0.8 }))
+  return crowded(p) ? (tries.find(q => !crowded(q)) ?? p) : p
+}
+
+/**
+ * Spots for texts joining a map whose candidates stay where they are: each
+ * newcomer sits at the mean of the placed spots weighted by its similarity to
+ * them (the nearest in meaning weigh most), nudged off any spot taken. A
+ * text alike to nothing placed goes to the centre, nudged out the same way.
+ */
+export const placeAmong = (placed: readonly { text: string; spot: Point }[], texts: readonly string[]): Point[] => {
+  if (placed.length === 0) return layoutTexts(texts)
+  const sim = similarityMatrix([...placed.map(p => p.text), ...texts])
+  return texts.reduce<Point[]>((done, _text, k) => {
+    const row = sim[placed.length + k] ?? []
+    const weights = placed.map((_, j) => (row[j] ?? 0) ** 2)
+    const total = weights.reduce((a, b) => a + b, 0)
+    const mean =
+      total <= 1e-9
+        ? { x: 0, y: 0 }
+        : placed.reduce((acc, p, j) => ({ x: acc.x + p.spot.x * ((weights[j] ?? 0) / total), y: acc.y + p.spot.y * ((weights[j] ?? 0) / total) }), { x: 0, y: 0 })
+    return [...done, nudgeOff(clampTo(mean), [CENTRE, ...placed.map(p => p.spot), ...done])]
+  }, [])
+}
+
+const placedOf = (set: CompassSet) => set.items.map(i => ({ text: i.text, spot: { x: i.x, y: i.y } }))
+
+/** The set with more extras laid in; what it had stays exactly where it was, the newcomers sit among them. */
 export const addExtras = (set: CompassSet, extras: readonly string[]): CompassSet => {
   const own = new Set(set.items.map(i => i.text))
   const fresh = extras.filter((t, i, all) => !own.has(t) && all.indexOf(t) === i)
   if (fresh.length === 0) return set
-  const texts = [...set.items.map(i => i.text), ...fresh]
-  const points = layoutTexts(texts, spotsOf(set))
-  const items = texts.map((text, i): CompassChoice => ({ text, ...at(points, i), isPrimary: i < set.items.length && (set.items[i]?.isPrimary ?? false) }))
+  const points = placeAmong(placedOf(set), fresh)
+  const items = [...set.items, ...fresh.map((text, k): CompassChoice => ({ text, ...at(points, k), isPrimary: false }))]
   return { ...set, items }
+}
+
+/**
+ * The four re-picked for Claude's final answer, on the map as it stands: a
+ * text already on it keeps its spot, a new one joins among the others, the
+ * directions follow the spots, and every other candidate becomes an extra.
+ * Nothing the person was looking at moves.
+ */
+export const repick = (set: CompassSet, parsed: ParsedSet, others: readonly string[]): ParsedSet => {
+  const four = parsed.items.map(i => i.text)
+  const names = [parsed.axes.up, parsed.axes.right, parsed.axes.down, parsed.axes.left]
+  const known = new Map(set.items.map(i => [i.text, { x: i.x, y: i.y }]))
+  const rest = [...set.items.map(i => i.text), ...others].filter((t, i, all) => !four.includes(t) && all.indexOf(t) === i)
+  const texts = [...four, ...rest]
+  const fresh = texts.filter(t => !known.has(t))
+  const placedFresh = placeAmong(placedOf(set), fresh)
+  const spotOf = (t: string): Point => known.get(t) ?? at(placedFresh, fresh.indexOf(t))
+  const points = texts.map(spotOf)
+  const order = toDirections(points, four.map((_, i) => i))
+  const primaries = order.map((i): CompassChoice => ({ text: four[i] ?? '', ...at(points, i), isPrimary: true }))
+  const extras = rest.map((text, k): CompassChoice => ({ text, ...at(points, four.length + k), isPrimary: false }))
+  return { axes: axesFor(names, order), items: [...primaries, ...extras] }
 }
