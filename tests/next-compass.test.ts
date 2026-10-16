@@ -129,15 +129,15 @@ const SPACE = 'space@2'
 /** Ticks of the space's frame clock that take it from the free field all the way to the map. */
 const MELT_MS = 1200
 
-const mountMap = ($: Engine) =>
-  $.ui.mount({
-    plugin: 'next-compass',
-    surface: 'terminal',
-    component: 'Pane',
-    requestId: 'next-compass-map',
-    props: PANE_PROPS,
-    viewport: { columns: 60, rows: 30 } as never,
-  })
+const MAP_MOUNT = {
+  plugin: 'next-compass',
+  component: 'Pane',
+  requestId: 'next-compass-map',
+  props: PANE_PROPS,
+  viewport: { columns: 60, rows: 30 } as never,
+} as const
+
+const mountMap = ($: Engine) => $.ui.mount({ ...MAP_MOUNT, surface: 'terminal' })
 
 /** The four directions' chips as the map draws them: some number, then the name that followed its text. */
 const CHIP_NAMES = ['進める', '広げる', '調べる', '固める']
@@ -265,14 +265,16 @@ describe('big panes stay drawn', () => {
   /** A Client's tree past 100,000 serialized characters is unmounted by the engine. */
   const LIMIT = 100_000
 
-  for (const size of [
-    { columns: 90, rows: 45 },
-    { columns: 120, rows: 60 },
-  ]) {
-    test(`flux and map fit the tree at ${size.columns}x${size.rows}`, async ($, on) => {
+  for (const [surface, size] of [
+    ['terminal', { columns: 90, rows: 45 }],
+    ['terminal', { columns: 120, rows: 60 }],
+    ['desktop', { columns: 90, rows: 45 }],
+    ['desktop', { columns: 120, rows: 60 }],
+  ] as const) {
+    test(`flux and map fit the tree at ${size.columns}x${size.rows} on the ${surface}`, async ($, on) => {
       engineBeneath(on, [])
       on('tool.call', () => ({ result: 'ok' }))
-      const ui = await mountMap($)
+      const ui = await $.ui.mount({ ...MAP_MOUNT, surface })
       await $.turn.start({ text: 'x', turnId: 't1' })
       for (let i = 0; i < 6; i++) await $.tool.call({ tool: 'Bash', command: 'ls' })
       await ui.redraw()

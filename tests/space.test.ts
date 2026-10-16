@@ -318,3 +318,26 @@ describe('big spaces stay drawn', () => {
     })
   }
 })
+
+describe('a region laid out to its content (the desktop)', () => {
+  test('one row laid out: the space still draws to the height asked, chips and all', async ($, on) => {
+    engineBeneath(on)
+    const pane = await $.ui.mount({
+      plugin: 'next-compass',
+      surface: 'desktop',
+      component: 'Pane',
+      requestId: 'next-compass-map',
+      props: PANE_PROPS,
+      viewport: { columns: 60, rows: 30 } as never,
+    })
+    await pane.resize({ columns: 56, rows: 1, in: SPACE })
+    await $.command.run(command('map'))
+    await $.command.run(command('refresh'))
+    await pane.redraw()
+    await pane.advance(20 * TICK_MS)
+    const root = await pane.drawn({ in: SPACE })
+    const rows = ('children' in root ? (root.children ?? []) : []).map(textOf)
+    expect(rows.length).toBe(PANE_PROPS.scroll.bodyRows - 2)
+    expect(hasChips(rows.slice(0, -2).join('\n'))).toBe(true)
+  })
+})

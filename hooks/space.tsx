@@ -28,6 +28,8 @@ export type SpaceProps = {
   ghost: { x: number; y: number } | null
   /** The instruction written for a spot, shown under the map until a second pick there sends it. */
   preview: { x: number; y: number; text: string } | null
+  /** The height the plugin gave the region, in rows: the desktop lays a region out to its content, so it may read fewer. */
+  height: number
 }
 
 /** `hold`: the four are gone (sent or cleared) and Claude is not working: the last map's colors stay, still, without chips. */
@@ -97,10 +99,25 @@ const readProps = (raw: unknown): SpaceProps => {
       preview !== null && typeof preview.x === 'number' && typeof preview.y === 'number' && typeof preview.text === 'string'
         ? { x: preview.x, y: preview.y, text: preview.text }
         : null,
+    height: typeof o.height === 'number' && Number.isFinite(o.height) ? Math.max(0, Math.floor(o.height)) : 0,
   }
 }
 
-const gridRows = (surface: ClientSurface<SpaceState>): number => Math.max(1, surface.rows - CAPTION_ROWS)
+/** The height asked for in props, kept for the listeners, which see the surface but not the props. */
+let heightAsked = 0
+
+/** Fewer grid rows than this and the space draws its label alone. */
+const MIN_GRID_ROWS = 3
+
+/**
+ * The grid's rows: the region as laid out, unless that is too short to draw in.
+ * The desktop lays a region out to its content, so a label drawn alone would
+ * keep it one row tall: the height asked for breaks that loop.
+ */
+const gridRows = (surface: ClientSurface<SpaceState>): number => {
+  const laid = surface.rows - CAPTION_ROWS
+  return Math.max(1, laid >= MIN_GRID_ROWS ? laid : heightAsked - CAPTION_ROWS)
+}
 
 /** Pointer and keys act on the map only, once it has settled enough to show its chips. */
 const listen = (surface: ClientSurface<SpaceState>): void => {
@@ -297,6 +314,7 @@ const Space: ClientModule<SpaceProps, SpaceState> = (raw, surface): RenderElemen
 }
 
 const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): RenderElement => {
+  heightAsked = props.height
   const { Box, Text } = surface.elements
   const had = (surface.state?.lastItems.length ?? 0) > 0
   const mode: Mode = props.items.length > 0 ? 'map' : !props.isWorking && had ? 'hold' : 'flux'
@@ -322,10 +340,12 @@ const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): Rende
   const melt = meltOf(view)
   // The field moves only while Claude works or a melt is under way; a settled map and an idle wait are still.
   const isStill = melt >= 1 ? mode !== 'flux' : melt <= 0 && mode === 'flux' && !props.isWorking
-  tick(!isStill)
   const rows = gridRows(surface)
   const { columns } = surface
-  if (columns < 12 || rows < 3) return <Text dimColor>{props.label}</Text>
+  // Before the first layout the size reads 0: keep the clock on so the space draws once it is laid out.
+  const isTooSmall = columns < 12 || rows < MIN_GRID_ROWS
+  tick(isTooSmall || !isStill)
+  if (isTooSmall) return <Text dimColor>{props.label}</Text>
   // Melting back into the flux, the map still draws the four it last had, fading with the melt.
   const drawn = mode === 'map' ? props : { ...props, items: view.lastItems, labels: view.lastLabels }
   const lines = fitRows(drawGrid({ props: drawn, view, melt, columns, rows, hasItems: mode === 'map' }))
@@ -348,7 +368,7 @@ const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): Rende
   return (
     <Box flexDirection="column">
       {lines.map(runs => (
-        <Text>
+        <Text mono>
           {runs.map(r => (
             <Text color={r.color} backgroundColor={r.bg} {...(r.bold ? { bold: true } : {})}>
               {r.text}
@@ -371,7 +391,7 @@ const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): Rende
           </Text>
         )
       ) : (
-        <Text wrap="truncate-end">
+        <Text mono wrap="truncate-end">
           {shown.bar.map(seg => (
             <Text backgroundColor={seg.color}>{' '.repeat(seg.width)}</Text>
           ))}
@@ -385,7 +405,7 @@ const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): Rende
         </Text>
       )}
       {/* No Fragment inside a Text: the terminal reads it as a Box in an inline element and refuses the tree. */}
-      <Text wrap="truncate-end">
+      <Text mono wrap="truncate-end">
         {shown === null
           ? ' '
           : [

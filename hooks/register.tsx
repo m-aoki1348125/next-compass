@@ -432,7 +432,7 @@ export const register: Register = (on, options) => {
         <Client
           key={spaceKey(faults)}
           module="./space.tsx"
-          props={{ gems: words.map(kindOf), label, isWorking: isWorking || isBusy, items: set?.items ?? [], labels, isBusy, ghost, preview }}
+          props={{ gems: words.map(kindOf), label, isWorking: isWorking || isBusy, items: set?.items ?? [], labels, isBusy, ghost, preview, height }}
           width="100%"
           height={height}
         />
