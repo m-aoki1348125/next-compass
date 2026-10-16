@@ -13,6 +13,18 @@ export type MapProps = {
 
 export type Cell = { col: number; row: number }
 
+/**
+ * How much the map says at its size: `full` names the directions and lays
+ * every extra over a textured ground; `compact` (a short or narrow pane, as
+ * one seated above the prompt) drops the names and the texture; `minimal`
+ * also drops the extras, leaving the four gems and the gradient.
+ */
+export type Detail = 'full' | 'compact' | 'minimal'
+
+/** The detail a grid of this size can carry without crowding (rows are the grid's, under the caption). */
+export const detailOf = (columns: number, rows: number): Detail =>
+  columns >= 48 && rows >= 12 ? 'full' : columns >= 32 && rows >= 8 ? 'compact' : 'minimal'
+
 /** `frame`: the field's clock, so the territories keep breathing while the map waits. */
 export type MapState = { cursor: Cell | null; hover: Cell | null; frame: number }
 
@@ -97,11 +109,11 @@ const chipCells = (widths: readonly number[], start: number, row: number): strin
 const ROW_TRIES = [0, -1, 1, -2, 2] as const
 
 /** Lays a primary's chip at its point, moved up or down a row or two if another chip is there. */
-const placeChip = (grid: Grid, props: MapProps, index: number, columns: number, rows: number): Grid => {
+const placeChip = (grid: Grid, props: MapProps, index: number, columns: number, rows: number, detail: Detail): Grid => {
   const item = props.items[index]
   if (item === undefined) return grid
   const cell = toCell(item.x, item.y, columns, rows)
-  const label = fitLabel(props.labels[index] ?? '', columns - CHIP_HEAD)
+  const label = detail === 'full' ? fitLabel(props.labels[index] ?? '', columns - CHIP_HEAD) : ''
   const chip = chipGlyphs(index, label, colorOf(props.items, index))
   const widths = chip.map(g => widthOf(g.char))
   const total = widths.reduce((a, b) => a + b, 0)
@@ -144,10 +156,11 @@ const placeExtra = (grid: Grid, props: MapProps, index: number, columns: number,
  * first, then each extra on its own cell, never touching a chip or another
  * extra. A cell a wide glyph covers holds an empty glyph, so nothing lands there.
  */
-export const placeItems = (props: MapProps, columns: number, rows: number): Grid => {
+export const placeItems = (props: MapProps, columns: number, rows: number, detail: Detail = 'full'): Grid => {
   const chips = props.items
     .flatMap((item, i) => (item.isPrimary ? [i] : []))
-    .reduce<Grid>((grid, i) => placeChip(grid, props, i, columns, rows), {})
+    .reduce<Grid>((grid, i) => placeChip(grid, props, i, columns, rows, detail), {})
+  if (detail === 'minimal') return chips
   return props.items
     .map((item, index) => ({ item, index }))
     .filter(({ item }) => !item.isPrimary)

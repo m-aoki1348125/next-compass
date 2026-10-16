@@ -6,6 +6,10 @@
   spot between them blended), the stats line reads as a sentence (`2 offered · 1 sent from the four …`),
   "running commands" and "other tools" are back in the working label. The Japanese map help and the
   resting line follow the same pick rule.
+- The map says less as it gets smaller, so a pane seated above the prompt in a small terminal stays
+  readable: from 48×12 cells it names the directions, lays every extra and textures the ground; below
+  that it drops the names and the texture; below 32×8 it also drops the extras, leaving the four gems
+  on the gradient. The size is the map's own, so a resize changes the level at once.
 - Help lines that would be cut by the edge take a short form instead: the band hint when the band is
   narrow, the map help and the preview help when the pane is (both languages).
 

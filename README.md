@@ -58,6 +58,10 @@ Before installing any mod you can list what it does without running it:
 | Map: click, or arrow keys + Enter | On a candidate: shows its own words. Between candidates: writes the instruction for that spot. Shown under the map |
 | Map: click / Enter again at the same spot | Sends it (Shift: fills the prompt box) |
 | Map: `1`–`4` | Puts that choice in the prompt box (the map shows chips, not the full text) |
+
+The map adapts to its size: wide and tall, it names the directions and shows every extra candidate on a
+textured ground; smaller (above the prompt in a small terminal), it keeps the gems and numbers and drops the
+names, then the extras.
 | `/compass goal <text>` | Sets the goal the four lean toward; `/compass goal` clears it |
 | `/compass map` · `hide` · `show` · `refresh` | Opens the map, hides or shows the band, remakes the four |
 | `/compass stats` | How often the next steps were taken, across sessions |

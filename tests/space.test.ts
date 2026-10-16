@@ -197,6 +197,29 @@ describe('one space from the free field to the map', () => {
     expect(engine.submitted).toEqual([own])
   })
 
+  test('a wide but short pane (seated above the prompt) draws the compact map: gems and numbers, no names, no texture', async ($, on) => {
+    const { pane } = await working($, on, { columns: 100, rows: 10 })
+    await $.command.run(command('refresh'))
+    await pane.redraw()
+    await pane.advance(9 * TICK_MS)
+    const grid = (await rowsOf(pane)).slice(0, 8).join('\n')
+    expect(grid.match(/❖ [1-4] /g) ?? []).toHaveLength(4)
+    expect(anyChip(grid)).toBe(false)
+    expect(count(grid, '✦')).toBe(3)
+    expect(grid).not.toMatch(/[·∙•]/)
+  })
+
+  test('a tiny pane draws the minimal map: the four gems on the gradient, no extras', async ($, on) => {
+    const { pane } = await working($, on, { columns: 30, rows: 8 })
+    await $.command.run(command('refresh'))
+    await pane.redraw()
+    await pane.advance(9 * TICK_MS)
+    const grid = (await rowsOf(pane)).slice(0, 6).join('\n')
+    expect(grid.match(/❖ [1-4] /g) ?? []).toHaveLength(4)
+    expect(count(grid, '✦')).toBe(0)
+    expect(grid).not.toMatch(/[·∙•]/)
+  })
+
   test('a click while the space is still melting does nothing', async ($, on) => {
     const { engine, pane } = await working($, on)
     await $.command.run(command('refresh'))

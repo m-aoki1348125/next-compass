@@ -4,8 +4,8 @@ import type { CompassChoice } from '../types'
 import { blend, cutToCells, fitRows, fluxCell, mapCell } from './field'
 import type { Cell as FieldCell, Run } from './field'
 import { lightsOf, lit, nearLights, rainbow } from './flux'
-import { MOVES, caption, center, cursorOf, itemAt, placeItems, paint, sameCell, toCell, toPoint } from './map'
-import type { Cell, Grid, MapState } from './map'
+import { MOVES, caption, center, cursorOf, detailOf, itemAt, placeItems, paint, sameCell, toCell, toPoint } from './map'
+import type { Cell, Detail, Grid, MapState } from './map'
 
 /**
  * The one space the pane draws, whatever the moment: the free field while
@@ -200,8 +200,13 @@ const start = (surface: ClientSurface<SpaceState>, mode: Mode, speed: number): v
   listen(surface)
 }
 
-/** The ground at a cell: the free field melting into the map's, by `melt`. */
-const groundAt = (x: number, y: number, t: number, items: readonly CompassChoice[], melt: number): FieldCell => {
+/** The ground at a cell: the free field melting into the map's, by `melt`; a small map's ground is plain color, no texture. */
+const groundAt = (x: number, y: number, t: number, items: readonly CompassChoice[], melt: number, detail: Detail): FieldCell => {
+  const cell = shadeAt(x, y, t, items, melt)
+  return detail === 'full' ? cell : { ...cell, text: ' ' }
+}
+
+const shadeAt = (x: number, y: number, t: number, items: readonly CompassChoice[], melt: number): FieldCell => {
   const free = fluxCell(x, y, t)
   if (melt <= 0) return free
   const shaped = mapCell(x, y, t, items)
@@ -233,7 +238,8 @@ type Scene = {
 /** Every grid row's cells: ground, then the gems' light, then the map's chips, extras and pointer. */
 const drawGrid = ({ props, view, melt, columns, rows, hasItems }: Scene): Run[][] => {
   // Holding the last map's colors (the four are gone), nothing is laid over the ground.
-  const placed = hasItems && melt > 0 ? shownAt(placeItems({ ...props }, columns, rows), melt) : {}
+  const detail = detailOf(columns, rows)
+  const placed = hasItems && melt > 0 ? shownAt(placeItems({ ...props }, columns, rows, detail), melt) : {}
   lastPlaced = hasItems && melt >= CHIPS_AT ? placed : {}
   lastItems = props.items
   const targets = props.items.filter(i => i.isPrimary).map(i => toCell(i.x, i.y, columns, rows))
@@ -255,7 +261,7 @@ const drawGrid = ({ props, view, melt, columns, rows, hasItems }: Scene): Run[][
     return Array.from({ length: columns }, (_, col): Run => {
       const cell = { col, row }
       const p = toPoint(cell, columns, rows)
-      if (col % 2 === 0 || pair === null) pair = { ...groundAt(p.x, p.y, view.t, props.items, melt), bold: false }
+      if (col % 2 === 0 || pair === null) pair = { ...groundAt(p.x, p.y, view.t, props.items, melt, detail), bold: false }
       const ground = pair
       const isMarked =
         placed[`${col},${row}`] !== undefined || sameCell(pointer.cursor, cell) || sameCell(pointer.hover, cell)

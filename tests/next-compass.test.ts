@@ -199,7 +199,9 @@ describe('map', () => {
       const rows = ('children' in root ? (root.children ?? []) : []).map(textOf).slice(0, size.rows - 2)
       const map = rows.join('\n')
       expect(rows.every(r => cellsOf(r) === size.columns)).toBe(true)
-      expect(hasChips(map)).toBe(true)
+      // A full-size map names the directions; a compact one (36x12) shows the four as gems and numbers only.
+      expect(hasChips(map)).toBe(size.columns >= 48)
+      expect(map.match(/❖ [1-4] /g) ?? []).toHaveLength(4)
       expect(Array.from(map).filter(c => c === '✦')).toHaveLength(3)
     })
   }
