@@ -82,7 +82,7 @@ const STRINGS = {
     ja: 'クリック／矢印キー＋Enter：候補はそのまま、間の位置は混ぜた指示 · もう一度で送信 · Shift で入力欄へ · 1〜4 でその択を入力欄へ',
     en: 'Click or arrows + Enter: a candidate as written, a spot between them blended · again sends · Shift fills the prompt · 1-4 fills a choice',
   },
-  helpMapShort: { ja: '候補はそのまま、間は混ぜて作成 · もう一度で送信 · Shift で入力欄へ', en: 'A candidate as is, between them blended · again sends · Shift fills' },
+  helpMapShort: { ja: '候補はそのまま、間は混ぜて作成 · もう一度で送信 · Shift で入力欄へ', en: 'Candidate as is, between blended · again sends · Shift fills' },
   helpPreview: { ja: 'もう一度クリック（Enter）で送信 · Shift で入力欄へ · 別の位置で作り直し', en: 'Click or Enter again to send · Shift fills the prompt · another spot starts over' },
   helpPreviewShort: { ja: 'もう一度で送信 · Shift で入力欄へ · 別の位置で作り直し', en: 'Again sends · Shift fills · another spot starts over' },
   helpBlending: { ja: '指示を作っています…', en: 'Writing the instruction…' },

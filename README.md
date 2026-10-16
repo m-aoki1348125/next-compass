@@ -17,6 +17,20 @@ The idea: keep choosing, and the project moves the way you meant.
 4: Add tests for the export module                                   ✎
 ```
 
+## Screens
+
+The four above the prompt, and the map docked beside the transcript (terminal, `/next demo`):
+
+![The four choices above the prompt and the settled map](docs/images/en-choices.png)
+
+While Claude works, the map is a moving field with one light per tool call:
+
+![The moving field while Claude works](docs/images/en-working.png)
+
+A pick between candidates writes the in-between instruction and shows it under the map; a second pick sends it:
+
+![A spot between candidates, with the blended instruction under the map](docs/images/en-between.png)
+
 ## How it works
 
 1. **While Claude works**, a fast model (haiku) prepares 6–12 candidate instructions from a short

@@ -86,7 +86,7 @@ describe('map edges', () => {
     stand(on)
     await compass($, 'refresh')
     const narrow = await mountPane($)
-    expect(await narrow.find({ text: /A candidate as is, between them blended · again sends · Shift fills/ })).toBeDefined()
+    expect(await narrow.find({ text: /Candidate as is, between blended · again sends · Shift fills/ })).toBeDefined()
     expect(await narrow.find({ text: /1-4 fills a choice/ })).toBe(undefined)
     await narrow.unmount()
     const wide = await mountPane($, 140)
