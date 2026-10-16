@@ -98,8 +98,8 @@ const gridOf = async (ui: Awaited<ReturnType<typeof mountPane>>): Promise<string
 
 const gems = (rows: readonly string[]): number => Array.from(rows.join('')).filter(c => c === '✦').length
 
-/** The row the pointer ◎ is on, or -1. */
-const pointerRow = (rows: readonly string[]): number => rows.findIndex(r => r.includes('◎'))
+/** The row the pointer ✛ is on, or -1. */
+const pointerRow = (rows: readonly string[]): number => rows.findIndex(r => r.includes('✛'))
 
 describe('demo mode', () => {
   // The script plays 16 s of frames at 120 ms, some 130 redraws of the space: given time on a loaded machine.

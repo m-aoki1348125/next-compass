@@ -137,7 +137,9 @@ describe('one space from the free field to the map', () => {
     expect(await pane.find({ key: SPACE })).toBeDefined()
     const settled = await grid()
     expect(hasChips(settled)).toBe(true)
-    expect(settled).not.toMatch(/[✧❖]/)
+    // The gems' facets are gone; ❖ is now only the four primaries' mark, ✦ only the extras'.
+    expect(settled).not.toMatch(/✧/)
+    expect(count(settled, '❖')).toBe(4)
     expect(count(settled, '✦')).toBe(3)
   })
 

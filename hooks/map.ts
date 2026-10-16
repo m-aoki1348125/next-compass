@@ -45,20 +45,27 @@ export const center = (columns: number, rows: number): Cell => ({
 
 const keyOf = (col: number, row: number): string => `${col},${row}`
 
+/** The marks laid over the field: a primary's gem, the pointer at rest or moved by keys, the pointer under the mouse. */
+export const MARKS = { primary: '❖', cursor: '✛', hover: '✧' } as const
+
 /**
- * The chip of a primary, one glyph per cell: its number on its own color,
- * then its direction's name written over the field, as the flux writes words.
+ * The chip of a primary, one glyph per cell, nothing boxed: a gem in its
+ * color, its number in white, then its direction's name in a lighter tint of
+ * the same color, all written over the field as the flux writes words.
  */
 const chipGlyphs = (index: number, label: string, color: string): Glyph[] => [
-  ...Array.from(` ${index + 1} `).map(char => ({ char, color: '#111111', bg: color, bold: true })),
-  ...Array.from(label.length > 0 ? `${label} ` : '').map(char => ({ char, color: lighten(color, 0.5), bold: true })),
+  { char: MARKS.primary, color: lighten(color, 0.25), bold: true },
+  { char: ' ', color: '#ffffff' },
+  { char: `${index + 1}`, color: '#ffffff', bold: true },
+  { char: ' ', color: '#ffffff' },
+  ...Array.from(label.length > 0 ? `${label} ` : '').map(char => ({ char, color: lighten(color, 0.55), bold: true })),
 ]
 
 /** Cells a glyph takes: two for a wide (CJK, fullwidth) character. */
 const widthOf = (char: string): number => (/[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]|[\u{20000}-\u{3fffd}]|\p{Extended_Pictographic}/u.test(char) ? 2 : 1)
 
-/** Cells the number part of a chip (" N ") takes. */
-const CHIP_HEAD = 3
+/** Cells the head of a chip ("❖ N ") takes. */
+const CHIP_HEAD = 4
 
 /**
  * A direction's name cut to the cells left beside the chip's number, its
@@ -159,11 +166,12 @@ export const paint = (cell: Cell, ground: { text: string; color: string; bg: str
   const item = placed[keyOf(cell.col, cell.row)]
   if (item !== undefined && item.char === '') return { char: '', color: '', bg }
   // The cursor over a candidate keeps the candidate's glyph, in the cursor's colors: nothing on the map is hidden by it.
+  // The pointer is a white mark on a soft glow of the ground, not a block: the field stays visible under it.
   if (sameCell(state.cursor, cell) && (item === undefined || widthOf(item.char) === 1)) {
-    return { char: item?.char ?? '◎', color: '#111111', bg: '#ffffff', bold: true }
+    return { char: item?.char ?? MARKS.cursor, color: '#ffffff', bg: lighten(bg, 0.3), bold: true }
   }
   if (sameCell(state.hover, cell)) {
-    return { char: item?.char ?? '+', color: '#ffffff', bg: lighten(item?.bg ?? bg, 0.3), bold: true }
+    return { char: item?.char ?? MARKS.hover, color: '#ffffff', bg: lighten(bg, 0.18), bold: true }
   }
   if (item !== undefined) return { ...item, bg: item.bg ?? bg }
   return { char: ground.text, color: ground.color, bg }

@@ -7,6 +7,9 @@
   · running commands (✦)`. The kinds keep a fixed order (read, edit, run, other tools), so the line does
   not reshuffle as work goes on. "The meaning space is moving" is gone from the label; the motion shows.
 - Shorter English strings throughout the UI (hints, statuses, reasons); the Japanese is unchanged.
+- The map's marks redrawn: a primary is a gem `❖` in its color, its number in white and its name in a
+  lighter tint, written over the field with no colored box; the pointer is a white `✛` on a soft glow of
+  the ground instead of a white block, the mouse a `✧`.
 - Option `keyMode` and the arrow-key cross are removed: the arrow keys belong to Claude Code's own history
   and focus movement, and a focused band's ring moves in drawing order, not by direction. Digits and
   clicks pick a choice.
