@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.3 — 2026-10-16
+
+- English wording reviewed: the band hint and the map help say what a pick does (a candidate as written, a
+  spot between them blended), the stats line reads as a sentence (`2 offered · 1 sent from the four …`),
+  "running commands" and "other tools" are back in the working label. The Japanese map help and the
+  resting line follow the same pick rule.
+
 ## 0.3.2 — 2026-10-16
 
 - The map's working label no longer counts "(5 actions)": it names the kinds of work this turn, with one

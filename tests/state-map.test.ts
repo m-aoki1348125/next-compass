@@ -228,11 +228,11 @@ describe('stats', () => {
     await $.prompt.submit({ text: 'something of my own', origin: { kind: 'composer' }, wait: false })
     await engine.clock.settle()
     const result = await compass($, 'stats')
-    expect(result.text).toContain('offered 2 times')
-    expect(result.text).toContain('four sent 1')
-    expect(result.text).toContain('map sent 0')
-    expect(result.text).toContain('typed instead 1')
-    expect(result.text).toContain('taken 50%')
+    expect(result.text).toContain('2 offered')
+    expect(result.text).toContain('1 sent from the four')
+    expect(result.text).toContain('0 sent from the map')
+    expect(result.text).toContain('1 typed instead')
+    expect(result.text).toContain('50% taken')
   })
 
   test('a send from the map is counted, and our own send is not counted as typed', async ($, on) => {
@@ -243,9 +243,9 @@ describe('stats', () => {
     await pickAt(pane, 0.4, 0.4)
     await engine.clock.settle()
     const result = await compass($, 'stats')
-    expect(result.text).toContain('offered 4 times')
-    expect(result.text).toContain('map sent 1')
-    expect(result.text).toContain('typed instead 0')
+    expect(result.text).toContain('4 offered')
+    expect(result.text).toContain('1 sent from the map')
+    expect(result.text).toContain('0 typed instead')
   })
 
   test('nothing recorded yet', async ($, on) => {
@@ -256,7 +256,7 @@ describe('stats', () => {
   test('with a pool the four shown at once count as one offer', async ($, on) => {
     const engine = stand(on)
     await preparedTurn($, engine)
-    expect((await compass($, 'stats')).text).toContain('offered 1 times')
+    expect((await compass($, 'stats')).text).toContain('1 offered')
   })
 })
 

@@ -10,7 +10,7 @@ space: click between them and the mod writes the in-between instruction for you.
 The idea: keep choosing, and the project moves the way you meant.
 
 ```
-✦ Next step   Empty prompt: 1-4 sends · ✎ fills to edit · … fills, not sends · /compass: map
+✦ Next step   Empty prompt: 1-4 sends · ✎ fills the prompt to edit · a choice ending in … fills instead
 1 Finish the export and open a PR                                     ✎
 2 Add JSON output next to CSV                                         ✎
 3 Open the exported file and check it by hand                         ✎
