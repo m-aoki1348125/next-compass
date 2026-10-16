@@ -164,6 +164,36 @@ describe('band', () => {
     expect(await ui.find({ text: 'engine' })).toBeDefined()
   })
 
+  /** A digit typed and sent as text, as the desktop does when its key does not reach the band. */
+  const typed = (text: string) => ({ text, origin: { kind: 'composer' as const }, wait: false })
+
+  test('a bare digit sent as text picks the choice the band shows under that number', async ($, on) => {
+    const submitted: string[] = []
+    const { clock } = engineBeneath(on, submitted)
+    await $.command.run(REFRESH)
+    const ui = await $.ui.mount({ plugin: 'next-compass', surface: 'desktop', component: 'AbovePrompt', props: BAND })
+    const shown = (await ui.find({ key: 'pick:2' }))?.text ?? ''
+    await $.prompt.submit(typed(' 3 '))
+    await clock.settle()
+    expect(submitted).toEqual([shown])
+  })
+
+  test('a digit is sent as it is while the band shows no four, and past the four', async ($, on) => {
+    const submitted: string[] = []
+    const { clock } = engineBeneath(on, submitted)
+    await $.command.run(REFRESH)
+    const ui = await $.ui.mount({ plugin: 'next-compass', surface: 'desktop', component: 'AbovePrompt', props: { ...BAND, hasSurvey: true } })
+    await ui.redraw()
+    await $.prompt.submit(typed('1'))
+    await ui.unmount()
+    const band = await $.ui.mount({ plugin: 'next-compass', surface: 'desktop', component: 'AbovePrompt', props: BAND })
+    await band.redraw()
+    await $.prompt.submit(typed('5'))
+    await $.prompt.submit(typed('12'))
+    await clock.settle()
+    expect(submitted).toEqual(['1', '5', '12'])
+  })
+
   test('without the map pane one CHOICES call and no extras call', async ($, on) => {
     const asked = engineBeneath(on, [], { placed: false })
     await $.command.run(OPEN_MAP)

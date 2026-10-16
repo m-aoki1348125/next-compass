@@ -157,6 +157,20 @@ async function refresh($: $, rt: Runtime): Promise<void> {
   await generate($, rt, null)
 }
 
+/** What the band last drew for each of the four: the text under its key, and whether it was cut. Empty while it drew none. */
+let bandShown: readonly { text: string; isCut: boolean }[] = []
+
+/** The choice a submitted bare digit means: only while the band shows the four, and only the four it shows now. */
+const digitPick = async ($: $, typed: string): Promise<{ index: number; text: string; isCut: boolean } | null> => {
+  const m = /^\s*([1-9])\s*$/.exec(typed)
+  if (m === null) return null
+  const index = Number(m[1]) - 1
+  const shown = bandShown[index]
+  if (shown === undefined || shown.text === '') return null
+  const set = await getSet($)
+  return set?.items[index]?.text === shown.text ? { index, ...shown } : null
+}
+
 export const register: Register = (on, options) => {
   const settings = readSettings(options)
   const rt: Runtime = { settings, t: makeT(resolveLang(settings.language, undefined)), lang: resolveLang(settings.language, undefined) }
@@ -269,6 +283,12 @@ export const register: Register = (on, options) => {
 
   // A prompt the person typed while the four were up counts against them.
   on('prompt.submit', async ($, e, next) => {
+    // A bare digit the band did not take (the desktop sends it as text) picks that choice, as its key would.
+    const picked = sendingNow() || e.command !== undefined || e.isMeta === true ? null : await digitPick($, e.text)
+    if (picked !== null) {
+      void choose($, rt, picked.index, picked.isCut, picked.text)
+      return { drop: 'next-compass: a digit picks the choice the band shows' }
+    }
     if (!sendingNow() && e.command === undefined && e.isMeta !== true && (await getSet($)) !== null) {
       void bumpStat($, 'typed')
     }
@@ -301,6 +321,8 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    // Forgotten on every draw, written again only when the four are drawn below.
+    bandShown = []
     if (e.props.hasSurvey || e.props.isWorking || (await getHidden($))) return next(e)
     const set = await getSet($)
     const phase: CompassPhase = await getPhase($)
@@ -331,6 +353,7 @@ export const register: Register = (on, options) => {
       const text = set.items[i]?.text ?? ''
       const cut = cutToCells(text, Math.max(4, room))
       const isCut = cut !== text
+      bandShown = bandShown.map((s, k) => (k === i ? { text, isCut } : s))
       return (
         // The hotkey draws the number (`1: `, or the desktop's own button): the label is the text alone.
         <Button plain key={`pick:${i}`} hotkey={String(i + 1)} onPress={() => void choose($, rt, i, isCut, text)}>
@@ -341,6 +364,7 @@ export const register: Register = (on, options) => {
     const edit = (i: number) => (
       <Button plain dimColor key={`edit:${i}`} label="✎" onPress={() => void choose($, rt, i, true, set.items[i]?.text)} />
     )
+    bandShown = Array.from({ length: PRIMARY_COUNT }, (_, i) => ({ text: set.items[i]?.text ?? '', isCut: false }))
     // The cells the title (and the refining note) take before the hint, which then gets the rest or its short form.
     const headCells = Array.from(`${t('bandTitle')}${isDemo ? t('demoTag') : ''} ${set.isRefining === true ? t('refining') : ''}`).length
     const header = (
