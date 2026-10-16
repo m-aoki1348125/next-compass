@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-10-16
 
 - The command is now `/next` (was `/compass`, whose name sits next to the built-in `/compact` in the
   typeahead): `/next map`, `/next goal <text>`, `/next refresh`, `/next hide`, `/next show`,

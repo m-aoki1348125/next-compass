@@ -48,7 +48,7 @@ declare module 'claude-code' {
       goal: string | null
       isHidden: boolean
       isWorking: boolean
-      /** True while `/compass demo` plays and until the next prompt: nothing is sent. */
+      /** True while `/next demo` plays and until the next prompt: nothing is sent. */
       isDemo: boolean
       /** The demo's pointer on the map, gliding to an in-between spot; null when none. */
       ghost: CompassPoint | null
