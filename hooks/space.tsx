@@ -228,7 +228,8 @@ const drawGrid = ({ props, view, melt, columns, rows, hasItems }: Scene): Run[][
   const ghost = props.ghost === null ? null : toCell(props.ghost.x, props.ghost.y, columns, rows)
   const previewAt = props.preview === null ? null : toCell(props.preview.x, props.preview.y, columns, rows)
   // A cursor moved away from the preview is the pointer again; the preview's spot keeps its mark otherwise.
-  const own = melt >= CHIPS_AT && hasItems ? cursorOf(view, columns, rows) : null
+  // At rest nothing is marked: the pointer appears where the keys or the mouse first put it.
+  const own = melt >= CHIPS_AT && hasItems ? view.cursor : null
   const pointer: MapState = {
     cursor: ghost ?? (view.cursor !== null && !sameCell(view.cursor, previewAt) ? own : (previewAt ?? own)),
     hover: ghost === null && melt >= CHIPS_AT ? view.hover : null,
@@ -308,7 +309,8 @@ const drawSpace = (props: SpaceProps, surface: ClientSurface<SpaceState>): Rende
   // Melting back into the flux, the map still draws the four it last had, fading with the melt.
   const drawn = mode === 'map' ? props : { ...props, items: view.lastItems, labels: view.lastLabels }
   const lines = fitRows(drawGrid({ props: drawn, view, melt, columns, rows, hasItems: mode === 'map' }))
-  const cap = melt >= 0.5 && mode === 'map' ? caption({ ...props }, { cursor: view.cursor, hover: view.hover, frame: view.frame }, columns, rows) : null
+  const isPointed = view.cursor !== null || view.hover !== null
+  const cap = melt >= 0.5 && mode === 'map' && isPointed ? caption({ ...props }, { cursor: view.cursor, hover: view.hover, frame: view.frame }, columns, rows) : null
   const focus = props.ghost === null ? null : caption({ ...props }, { cursor: toCell(props.ghost.x, props.ghost.y, columns, rows), hover: null, frame: view.frame }, columns, rows)
   // A written instruction shows whole, over the shares at its spot, until a second pick there sends it.
   const atPreview = props.preview === null ? null : toCell(props.preview.x, props.preview.y, columns, rows)

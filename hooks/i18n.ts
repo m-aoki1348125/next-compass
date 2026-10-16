@@ -69,6 +69,7 @@ const STRINGS = {
   kindRead: { ja: '読み取り', en: 'reading' },
   kindOther: { ja: 'ほかのツール', en: 'other' },
   kindCount: { ja: '{name}({gems})', en: '{name} ({gems})' },
+  paneReady: { ja: '✦ 位置を選ぶと、その場所の指示を作ります。', en: '✦ Pick a spot to write its instruction.' },
   paneIdle: { ja: 'Claude の返答が終わると、ここに次の一手の候補が並びます。', en: 'Next steps appear here when Claude finishes.' },
   paneThinking: { ja: '✦ 次の一手を考えています…', en: '✦ Thinking of next steps…' },
   statusDemo: { ja: 'デモ表示中：モデルは呼ばず、選んでも送信しません。', en: 'Demo: no model call, nothing sent.' },

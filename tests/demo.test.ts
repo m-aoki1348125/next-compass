@@ -98,7 +98,7 @@ const gridOf = async (ui: Awaited<ReturnType<typeof mountPane>>): Promise<string
 
 const gems = (rows: readonly string[]): number => Array.from(rows.join('')).filter(c => c === '✦').length
 
-/** The row the pointer ✛ is on, or -1. */
+/** The row the pointer ✛ is on, or -1 when none is drawn. */
 const pointerRow = (rows: readonly string[]): number => rows.findIndex(r => r.includes('✛'))
 
 describe('demo mode', () => {
@@ -133,7 +133,8 @@ describe('demo mode', () => {
     await pane.redraw()
     const four = await gridOf(pane)
     for (const chip of [' 1 仕上げる', ' 2 広げる', ' 3 確かめる', ' 4 固める']) expect(four.join('\n')).toContain(chip)
-    expect(pointerRow(four)).toBe(GRID_ROWS / 2)
+    // At rest the map carries no pointer; the demo's glide brings one in and takes it away.
+    expect(pointerRow(four)).toBe(-1)
     await band.redraw()
     expect(await band.find({ text: /次の一手（デモ）/ })).toBeDefined()
     for (const text of ['エクスポート機能を仕上げて', 'JSON 出力', '実際に開いて確認', 'テストを追加']) {
@@ -152,7 +153,7 @@ describe('demo mode', () => {
 
     await engine.clock.advance(3500)
     await pane.redraw()
-    expect(pointerRow(await gridOf(pane))).toBe(GRID_ROWS / 2)
+    expect(pointerRow(await gridOf(pane))).toBe(-1)
     expect(engine.asked).toEqual([])
     expect(engine.submitted).toEqual([])
   })

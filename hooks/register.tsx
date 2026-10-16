@@ -378,7 +378,9 @@ export const register: Register = (on, options) => {
       ? t('paneThinking')
       : isWorking
         ? t('paneWorking', { demo: isDemo ? t('demoTag') : '', kinds: kindsLine(t, words) })
-        : t('paneIdle')
+        : set !== null
+          ? t('paneReady')
+          : t('paneIdle')
     const labels = set === null ? [] : [set.axes.up, set.axes.right, set.axes.down, set.axes.left]
     const tm: CompassTimings = set?.timings ?? NO_TIMINGS
     // One Client for every moment, so the free field melts into the map without a seam; its

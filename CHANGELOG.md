@@ -9,7 +9,8 @@
 - Shorter English strings throughout the UI (hints, statuses, reasons); the Japanese is unchanged.
 - The map's marks redrawn: a primary is a gem `❖` in its color, its number in white and its name in a
   lighter tint, written over the field with no colored box; the pointer is a white `✛` on a soft glow of
-  the ground instead of a white block, the mouse a `✧`.
+  the ground instead of a white block, the mouse a `✧`. At rest the map carries no pointer and no
+  caption: the pointer appears where the keys or the mouse first put it (the keys start from the middle).
 - Option `keyMode` and the arrow-key cross are removed: the arrow keys belong to Claude Code's own history
   and focus movement, and a focused band's ring moves in drawing order, not by direction. Digits and
   clicks pick a choice.
